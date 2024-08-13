@@ -1,0 +1,11 @@
+{
+    "mongodb_uri": "mongodb://your_mongo_server_address:27017/",
+    "db_name": "your_database_name",
+    "instagram_access_token": "YOUR_INSTAGRAM_ACCESS_TOKEN",
+    "instagram_api_version": "v20.0",
+    "instagram_verify_token": "YOUR_VERIFY_TOKEN",
+    "improve": true,
+    "human_review": false,
+    "flask_debug": true,
+    "flask_port": 5000
+}
