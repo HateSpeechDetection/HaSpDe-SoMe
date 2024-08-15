@@ -1,4 +1,3 @@
-import os
 import nltk
 import requests
 import joblib
@@ -6,6 +5,7 @@ from log import logger
 from profane_detector import ProfaneDetector
 from pymongo import MongoClient
 from config import Config
+from updater import ModelUpdater
 
 nltk.download('punkt')
 config = Config()
@@ -21,35 +21,6 @@ client = MongoClient(config.MONGODB_URI)
 db = client[config.DB_NAME]
 comments_collection = db['comments']
 
-def download_file(url, save_path):
-    try:
-        response = requests.get(url, stream=True)
-        response.raise_for_status()
-        with open(save_path, 'wb') as file:
-            for chunk in response.iter_content(chunk_size=8192):
-                file.write(chunk)
-        logger.info(f"Downloaded file from {url}.")
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Failed to download the file: {e}")
-        exit()
-
-def get_local_version(version_file):
-    if os.path.exists(version_file):
-        with open(version_file, 'r') as file:
-            return file.read().strip()
-    return None
-
-def get_github_version(url):
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.text.strip()
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Failed to fetch the version from GitHub: {e}")
-        return None
-
-def is_newer_version_available(local_version, github_version):
-    return github_version > local_version
 
 def get_most_probable_class_and_percent(model, X):
     # Get class probabilities using predict_proba
@@ -77,15 +48,15 @@ class ModerationModel:
         raise DeprecationWarning("This function is depraced, use load_model() instead.")
     
     def load_model(self):
-        local_version = get_local_version(MODEL_VERSION_FILE)
-        github_version = get_github_version(GITHUB_VERSION_URL)
-
-        if github_version and (not local_version or is_newer_version_available(local_version, github_version)):
-            logger.info("Newer model version available. Downloading...")
-            download_file(GITHUB_MODEL_URL, MODEL_FILE)
-            download_file(GITHUB_VERSION_URL, MODEL_VERSION_FILE)
-            logger.info(f"Model version updated to {github_version}.")
+        updater = ModelUpdater(
+            model_file=MODEL_FILE,
+            version_file=MODEL_VERSION_FILE,
+            model_url=GITHUB_MODEL_URL,
+            version_url=GITHUB_VERSION_URL
+        )
         
+        updater.update_model()
+
         try:
             model = joblib.load(MODEL_FILE)
             logger.debug("Existing model loaded.")
