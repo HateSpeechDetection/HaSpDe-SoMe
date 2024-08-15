@@ -211,7 +211,9 @@ def review():
         comments_collection.update_one({'id': comment_id}, {'$set': {'status': 'in_review'}})
 
         return render_template('review.html', comment_id=comment_id, comment_text=comment_text, evaluation_result=evaluation_result)
+    
     else:
+        
         return render_template("nothing_to_review.html")  # Render a template indicating no comments are available for review
 
 @app.route('/skip/<comment_id>', methods=["POST"])
