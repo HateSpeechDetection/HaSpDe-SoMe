@@ -5,6 +5,7 @@ import os
 # Optional: Colorize console logs (requires 'colorlog' package)
 try:
     from colorlog import ColoredFormatter
+
     color_logging_enabled = True
 except ImportError:
     color_logging_enabled = False
@@ -17,7 +18,7 @@ logger = logging.getLogger("HaSpDe_SoMe")
 logger.setLevel(log_level)
 
 # Formatter for log messages
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 # Console handler with color support
 console_handler = logging.StreamHandler()
@@ -27,12 +28,12 @@ if color_logging_enabled:
         datefmt=None,
         reset=True,
         log_colors={
-            'DEBUG':    'cyan',
-            'INFO':     'green',
-            'WARNING':  'yellow',
-            'ERROR':    'red',
-            'CRITICAL': 'red,bg_white',
-        }
+            "DEBUG": "cyan",
+            "INFO": "green",
+            "WARNING": "yellow",
+            "ERROR": "red",
+            "CRITICAL": "red,bg_white",
+        },
     )
     console_handler.setFormatter(color_formatter)
 else:
@@ -43,7 +44,9 @@ logger.addHandler(console_handler)
 
 # File handler with rotation
 log_file = "app.log"
-file_handler = logging.handlers.RotatingFileHandler(log_file, maxBytes=5*1024*1024, backupCount=5)
+file_handler = logging.handlers.RotatingFileHandler(
+    log_file, maxBytes=5 * 1024 * 1024, backupCount=5
+)
 file_handler.setFormatter(formatter)
 
 # Add file handler to logger
