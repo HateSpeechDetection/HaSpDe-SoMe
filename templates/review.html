@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fi">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kommenttien tarkistus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gradient-to-r from-indigo-200 to-blue-300 flex flex-col min-h-screen">
+    <header class="bg-white shadow p-4">
+        <h1 class="text-2xl font-bold text-green-600 text-center">HaSpDe SoMeHuRe-järjestelmä</h1>
+    </header>
+
+    <main class="flex-grow flex justify-center items-center">
+        <div class="container bg-white p-8 rounded-lg shadow-xl w-full max-w-md text-center">
+            <h2 class="text-3xl font-bold text-green-600 mb-4">Tarkista kommentti</h2>
+            <p class="mb-2 font-semibold text-gray-700">Kommentti:</p>
+            <div class="bg-blue-100 p-4 rounded-lg mb-4 max-h-48 overflow-auto shadow-inner">
+                <span class="text-gray-800">{{ comment_text }}</span>
+            </div>
+            
+            <div class="mt-6 space-x-2">
+                <form action="{{ url_for('approve', comment_id=comment_id) }}" method="post" class="inline-block">
+                    <button class="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 transition duration-200" type="submit" aria-label="Hyväksy kommentti">Hyväksy</button>
+                </form>
+                <form action="{{ url_for('skip', comment_id=comment_id) }}" method="post" class="inline-block">
+                    <button class="bg-yellow-600 text-white px-5 py-2 rounded-lg hover:bg-yellow-700 transition duration-200" type="submit" aria-label="Ohita kommentti">Ohita</button>
+                </form>
+                <form action="{{ url_for('remove', comment_id=comment_id) }}" method="post" class="inline-block">
+                    <button class="bg-red-600 text-white px-5 py-2 rounded-lg hover:bg-red-700 transition duration-200" type="submit" aria-label="Poista kommentti">Poista</button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-white shadow mt-4 p-4 text-center">
+        <p>© 2024 <a href="https://luova.club">LuovaClub</a>. Kaikki oikeudet pidätetään.</p>
+    </footer>
+</body>
+
+</html>
