@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="fi">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ei tarkistettavaa<title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .fade-in {
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-to-r from-blue-400 to-purple-600 flex flex-col min-h-screen">
+    <header class="bg-white shadow p-4">
+        <h1 class="text-2xl font-bold text-green-600 text-center">HaSpDe SoMeHuRe-järjestelmä</h1>
+    </header>
+
+    <main class="flex-grow flex justify-center items-center">
+        <div class="container bg-white p-8 rounded-3xl shadow-2xl w-full max-w-lg text-center fade-in">
+            <h2 class="text-3xl font-extrabold text-green-600 mb-4">Ei tarkistettavaa</h2>
+            <p class="text-lg mb-4">Tämä sivu latautuu uudelleen <span class="countdown font-bold text-2xl text-red-500">5</span> sekunnin kuluttua...</p>
+            <svg class="w-16 h-16 mx-auto animate-bounce text-green-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h18M12 3v18" />
+            </svg>
+            <p class="text-gray-600">Pysy kuulolla! Kommentteja tulossa.</p>
+        </div>
+    </main>
+
+    <footer class="bg-white shadow mt-4 p-4 text-center">
+        <p>© 2024 <a class="link" href="https://luova.club">LuovaClub</a>. Kaikki oikeudet pidätetään.</p>
+    </footer>
+
+    <script>
+        let countdownElement = document.querySelector('.countdown');
+        let secondsLeft = 5;
+
+        const countdown = setInterval(() => {
+            secondsLeft--;
+            countdownElement.textContent = secondsLeft;
+
+            if (secondsLeft <= 0) {
+                clearInterval(countdown);
+                location.reload(); // Lataa sivu uudelleen, kun laskenta saavuttaa 0
+            }
+        }, 1000);
+    </script>
+</body>
+
+</html>
