@@ -4,6 +4,15 @@ from log import logger
 
 class ModelUpdater:
     def __init__(self, model_file, version_file, model_url, version_url):
+        """
+        Initialize the ModelUpdater.
+
+        Args:
+            model_file (str): Path to the local model file.
+            version_file (str): Path to the local version file.
+            model_url (str): URL to download the model file.
+            version_url (str): URL to download the version file.
+        """
         self.model_file = model_file
         self.version_file = version_file
         self.model_url = model_url

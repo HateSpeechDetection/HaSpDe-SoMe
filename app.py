@@ -1,13 +1,12 @@
 import json
 import requests
 from flask import Flask, request, jsonify, render_template, redirect, url_for
-from pymongo import MongoClient
 from moderation_model import ModerationModel
 from flask import jsonify
 import json
+from database_manager import DatabaseManager
 
 from log import logger
-import datetime
 from config import Config
 
 # Initialization
@@ -16,11 +15,11 @@ processed_comments = set()
 app = Flask(__name__)
 
 # MongoDB setup
-client = MongoClient(config.MONGODB_URI)
-db = client[config.DB_NAME]
+client = DatabaseManager().get_instance()
+db = client.get_db()
 comments_collection = db['comments']
 
-db_2 = client["HaSpDeDash"]
+db_2 = client.get_db("HaSpDeDash")
 
 # Use configurations from config
 INSTAGRAM_ACCESS_TOKEN = config.INSTAGRAM_ACCESS_TOKEN
@@ -288,7 +287,7 @@ def skip(comment_id):
 def approve(comment_id):
     # Update the comment status in MongoDB
     comment = comments_collection.find_one({'id': comment_id})
-    moderation_model._log_comment(comment=comment["text"], label=0)
+    moderation_model._log_comment(action_type=0, comment=comment["text"], label=0)
     comments_collection.update_many({'id': comment_id}, {'$set': {'status': 'APPROVED'}})
     return redirect(url_for('review'))
 
@@ -298,7 +297,7 @@ def remove(comment_id):
     
     comments_collection.update_many({'id': comment_id}, {'$set': {'status': 'PENDING_REMOVE'}})  # Let database know, that we will soon remove the comment from the social media platform
     
-    moderation_model._log_comment(comment=comment["text"], label=1)  # On our AI model, add to training data
+    moderation_model._log_comment(action_type=2, comment=comment["text"], label=1)  # On our AI model, add to training data
     
     remove_comment(comment_id)
     
@@ -352,25 +351,7 @@ def remove_comment(comment_id):
         headers = {'Authorization': f'Bearer {INSTAGRAM_ACCESS_TOKEN}'}
 
     else:
-        # For Facebook, derive the owner ID
-        owner_id = media_id.split('_')[0]  # Get the part before the underscore
-
-        # Fetch user info to find the corresponding page access token
-        user = db_2.users.find_one({'managed_pages.page_id': owner_id})
-        if user:
-            for page in user['managed_pages']:
-                if page['page_id'] == owner_id:
-                    page_access_token = page['page_access_token']
-                    break
-            else:
-                logger.critical(f"No access token found for owner ID {owner_id}.")
-                return
-        else:
-            logger.critical(f"No user found for owner ID {owner_id}.")
-            return
-
-        url = f"https://graph.facebook.com/{INSTAGRAM_API_VERSION}/{comment_id}"
-        headers = {'Authorization': f'Bearer {page_access_token}'}
+        url, headers = facebook_remove_handler(media_id)
 
     try:
         # Send a DELETE request to remove the comment
@@ -389,6 +370,28 @@ def remove_comment(comment_id):
 def method_not_allowed():
     logger.warning("Method not allowed!")
     return jsonify({'error': 'Method not allowed'}), 405
+
+def facebook_remove_handler(media_id):# For Facebook, derive the owner ID
+    owner_id = media_id.split('_')[0]  # Get the part before the underscore
+
+    # Fetch user info to find the corresponding page access token
+    user = db_2.users.find_one({'managed_pages.page_id': owner_id})
+    if user:
+        for page in user['managed_pages']:
+            if page['page_id'] == owner_id:
+                page_access_token = page['page_access_token']
+                break
+        else:
+            logger.critical(f"No access token found for owner ID {owner_id}.")
+            return
+    else:
+        logger.critical(f"No user found for owner ID {owner_id}.")
+        return
+
+    url = f"https://graph.facebook.com/{INSTAGRAM_API_VERSION}/{comment_id}"
+    headers = {'Authorization': f'Bearer {page_access_token}'}
+
+    return url, headers
 
 if __name__ == '__main__':
     app.run(debug=config.FLASK_DEBUG, port=config.FLASK_PORT)
