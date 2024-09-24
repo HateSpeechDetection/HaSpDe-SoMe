@@ -14,7 +14,7 @@ config = Config()
 processed_comments = set()
 app = Flask(__name__)
 
-Status(app, app.config["MONGODB_URI"])
+Status(app, app.config["MONGO_URI"])
 
 # MongoDB setup
 client = DatabaseManager().get_instance()
