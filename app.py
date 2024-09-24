@@ -4,6 +4,8 @@ from flask import Flask, request, jsonify, render_template, redirect, url_for
 from moderation_model import ModerationModel
 from database_manager import DatabaseManager
 
+from status_package import Status
+
 from log import logger
 from config import Config
 
@@ -11,6 +13,8 @@ from config import Config
 config = Config()
 processed_comments = set()
 app = Flask(__name__)
+
+Status(app, app.config["MONGODB_URI"])
 
 # MongoDB setup
 client = DatabaseManager().get_instance()
