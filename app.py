@@ -2,8 +2,6 @@ import json
 import requests
 from flask import Flask, request, jsonify, render_template, redirect, url_for
 from moderation_model import ModerationModel
-from flask import jsonify
-import json
 from database_manager import DatabaseManager
 
 from log import logger
@@ -351,7 +349,7 @@ def remove_comment(comment_id):
         headers = {'Authorization': f'Bearer {INSTAGRAM_ACCESS_TOKEN}'}
 
     else:
-        url, headers = facebook_remove_handler(media_id)
+        url, headers = facebook_remove_handler(media_id, comment_id)
 
     try:
         # Send a DELETE request to remove the comment
@@ -371,7 +369,7 @@ def method_not_allowed():
     logger.warning("Method not allowed!")
     return jsonify({'error': 'Method not allowed'}), 405
 
-def facebook_remove_handler(media_id):# For Facebook, derive the owner ID
+def facebook_remove_handler(media_id, comment_id):# For Facebook, derive the owner ID
     owner_id = media_id.split('_')[0]  # Get the part before the underscore
 
     # Fetch user info to find the corresponding page access token
