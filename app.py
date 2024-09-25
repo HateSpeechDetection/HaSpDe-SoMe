@@ -258,10 +258,10 @@ def handle_comment(comment_data):
                 hide_comment(comment_id)
 
         elif int(result) == 4:
-            hide_comment(comment_id) # First lets hide the comment so no one sees it whilst its pending for review.
-
             comments_collection.update_one({'id': comment_id}, {'$set': {'status': 'PENDING_REVIEW'}})
             logger.info(f"Comment {comment_id} is now in queue for human review.")
+
+            hide_comment(comment_id, log=False) # First lets hide the comment so no one sees it whilst its pending for review.
 
     else:
         logger.warning(f"Comment with id '{comment_id}' has already been processed. SKIPPING.")
@@ -396,7 +396,7 @@ def token_(media_id, platform):
     headers = {'Authorization': f'Bearer {access_token}'}
     return headers
 
-def hide_comment(comment_id):
+def hide_comment(comment_id, log=True):
     """
     Hide a comment on Instagram using Instagram Graph API.
 
@@ -419,7 +419,8 @@ def hide_comment(comment_id):
     if response.status_code == 200:
         logger.info(f"Comment with ID {comment_id} hid successfully.")
         # Update the comment status in the database
-        comments_collection.update_many({'id': comment_id}, {'$set': {'status': 'HIDDEN'}})
+        if log:
+            comments_collection.update_many({'id': comment_id}, {'$set': {'status': 'HIDDEN'}})
 
     else:
         logger.warning(f"Failed to hide comment with ID {comment_id}. Status code: {response.status_code}, Response: {response.text}")
