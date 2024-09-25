@@ -105,6 +105,9 @@ def handle_webhook_event(request):
                         comment_data = change['value']
                         if comment_data.get('item') == 'comment':
                             process_facebook_comment(comment_data)
+                        
+                        if comment_data.get("item") == 'reaction':
+                            logger.debug("Received reaction")
 
     # Process Instagram events
     elif data.get('object') == 'instagram':
@@ -407,7 +410,8 @@ def hide_comment(comment_id):
 
     headers = token_(media_id, platform)
     params = {
-        "is_hidden": "true"
+        "is_hidden": "true",
+        "hide": True
     }
     
     response = requests.post(url, params=params, headers=headers)
