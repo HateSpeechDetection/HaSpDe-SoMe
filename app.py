@@ -304,6 +304,7 @@ def approve(comment_id):
     comment = comments_collection.find_one({'id': comment_id})
     moderation_model._log_comment(action_type=0, comment=comment["text"], label=0)
     comments_collection.update_many({'id': comment_id}, {'$set': {'status': 'APPROVED'}})
+    hide_comment(comment_id, False, unhide=True)
     return redirect(url_for('review'))
 
 @app.route('/remove/<comment_id>', methods=['POST'])
@@ -396,7 +397,7 @@ def token_(media_id, platform):
     headers = {'Authorization': f'Bearer {access_token}'}
     return headers
 
-def hide_comment(comment_id, log=True):
+def hide_comment(comment_id, log=True, unhide=False):
     """
     Hide a comment on Instagram using Instagram Graph API.
 
@@ -413,17 +414,23 @@ def hide_comment(comment_id, log=True):
         "is_hidden": "true",
         "hide": True
     }
-    
+
+    if unhide:
+        params = {
+            "is_hidden": "false",
+            "hide": False
+        }    
+
     response = requests.post(url, params=params, headers=headers)
     
     if response.status_code == 200:
-        logger.info(f"Comment with ID {comment_id} hid successfully.")
+        logger.info(f"Comment with ID {comment_id} {"hid" if not unhide else "unhid"} successfully.")
         # Update the comment status in the database
         if log:
             comments_collection.update_many({'id': comment_id}, {'$set': {'status': 'HIDDEN'}})
 
     else:
-        logger.warning(f"Failed to hide comment with ID {comment_id}. Status code: {response.status_code}, Response: {response.text}")
+        logger.warning(f"Failed to {"un" if unhide else ""}hide comment with ID {comment_id}. Status code: {response.status_code}, Response: {response.text}")
 
 def method_not_allowed():
     logger.warning("Method not allowed!")
