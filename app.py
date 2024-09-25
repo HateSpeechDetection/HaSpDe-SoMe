@@ -98,6 +98,7 @@ def handle_webhook_event(request):
         logger.info("The comment is facebook")
 
         for entry in data.get("entry", []):
+            print(entry)
             if 'changes' in entry and isinstance(entry['changes'], list):
                 for change in entry['changes']:
                     if change.get('field') == 'feed' and 'value' in change:
