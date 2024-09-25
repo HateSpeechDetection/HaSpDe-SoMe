@@ -431,13 +431,13 @@ def hide_comment(comment_id, log=True, unhide=False):
     response = requests.post(url, params=params, headers=headers)
     
     if response.status_code == 200:
-        logger.info(f"Comment with ID {comment_id} {"hid" if not unhide else "unhid"} successfully.")
+        logger.info(f"Comment with ID {comment_id} {'hid' if not unhide else 'unhid'} successfully.")
         # Update the comment status in the database
         if log:
             comments_collection.update_many({'id': comment_id}, {'$set': {'status': 'HIDDEN'}})
 
     else:
-        logger.warning(f"Failed to {"un" if unhide else ""}hide comment with ID {comment_id}. Status code: {response.status_code}, Response: {response.text}")
+        logger.warning(f"Failed to {'un' if unhide else ''}hide comment with ID {comment_id}. Status code: {response.status_code}, Response: {response.text}")
 
 def method_not_allowed():
     logger.warning("Method not allowed!")
