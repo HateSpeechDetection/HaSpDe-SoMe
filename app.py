@@ -212,6 +212,24 @@ def comment_to_db(comment_id, comment_text, platform, user_id=None, user_name='U
     except Exception as e:
         logger.error(f"Error inserting comment with ID {comment_id}: {e}")
 
+def approve_comment(comment_id):
+    """Approve the comment."""
+    approve(comment_id)
+    logger.debug(f"Comment {comment_id} has been approved.")
+
+def send_for_human_review(comment_id):
+    """Queue the comment for human review and hide it in the meantime."""
+    comments_collection.update_one({'id': comment_id}, {'$set': {'status': 'PENDING_REVIEW'}})
+    logger.info(f"Comment {comment_id} is now queued for human review.")
+    hide_comment(comment_id, log=False)  # Hide the comment while pending review
+
+def handle_action_based_on_mode(comment_id, fallback_action):
+    """Handle actions based on the config mode."""
+    if config.MODE == "full":
+        action_2(comment_id)
+    else:
+        hide_comment(comment_id)
+
 def handle_comment(comment_data):
     """
     Process an incoming comment for moderation.
@@ -223,48 +241,37 @@ def handle_comment(comment_data):
     comment_id = comment_data.get('comment_id') or comment_data.get('id')
     comment_text = comment_data.get('message') or comment_data.get('text', '')
 
-    # Check if the comment ID is valid
+    # Validate comment ID
     if not comment_id:
-        logger.error("Comment ID is missing in the comment data.")
+        logger.error("Missing comment ID in the comment data.")
         return
 
-    # Check if the comment has already been processed
-    if comment_id not in processed_comments:
-        processed_comments.add(comment_id)  # Add the comment ID to the processed set
+    # Skip processing if the comment has already been processed
+    if comment_id in processed_comments:
+        logger.warning(f"Comment with id '{comment_id}' has already been processed. Skipping.")
+        return
 
-        # Moderate the comment using the moderation model
-        result = moderation_model.moderate_comment(comment_text)
-        if int(result) == 0:
-            approve(comment_id)  # Approve the comment if it is appropriate
-            logger.debug(f"Comment {comment_id} has been approved.")
-        
-        elif int(result) == 1:
-            #action_2(comment_id)
+    # Add comment ID to the processed set to avoid re-processing
+    processed_comments.add(comment_id)
 
-            hide_comment(comment_id)
+    # Moderate the comment using the moderation model
+    moderation_result = moderation_model.moderate_comment(comment_text)
+    
+    # Define action based on moderation result
+    result_action_map = {
+        0: approve_comment,
+        1: hide_comment,
+        2: lambda cid: handle_action_based_on_mode(cid, "max_hide"),
+        3: lambda cid: handle_action_based_on_mode(cid, "max_hide"),
+        4: send_for_human_review
+    }
 
-        elif int(result) == 2:
-            if config.MODE == "full":
-                action_2(comment_id)
-            
-            elif config.MODE == "max_hide":
-                hide_comment(comment_id)
-
-        elif int(result) == 3:
-            if config.MODE == "full":
-                action_2(comment_id)
-            
-            elif config.MODE == "max_hide":
-                hide_comment(comment_id)
-
-        elif int(result) == 4:
-            comments_collection.update_one({'id': comment_id}, {'$set': {'status': 'PENDING_REVIEW'}})
-            logger.info(f"Comment {comment_id} is now in queue for human review.")
-
-            hide_comment(comment_id, log=False) # First lets hide the comment so no one sees it whilst its pending for review.
-
+    # Execute the corresponding action
+    result_action = result_action_map.get(int(moderation_result))
+    if result_action:
+        result_action(comment_id)
     else:
-        logger.warning(f"Comment with id '{comment_id}' has already been processed. SKIPPING.")
+        logger.error(f"Unknown moderation result: {moderation_result} for comment {comment_id}")
 
 def action_2(comment_id):
     remove(comment_id)  # Remove the comment if it is deemed inappropriate
