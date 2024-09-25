@@ -10,8 +10,8 @@ class Config:
         self.FLASK_PORT = config.get('flask_port', 5000)
 
         # MongoDB settings
-        self.MONGODB_URI = config.get('mongodb_uri', 'mongodb://localhost:27017/')
-        self.DB_NAME = config.get('db_name', 'comment_moderation')
+        self.MONGO_URI = config.get('mongodb_uri', 'mongodb://localhost:27017/')
+        self.MONGO_DBNAME = config.get('db_name', 'comment_moderation')
 
         # Instagram settings
         self.INSTAGRAM_ACCESS_TOKEN = config.get('instagram_access_token', '')
@@ -21,6 +21,7 @@ class Config:
         # Other settings
         self.IMPROVE = config.get('improve', True)
         self.HUMAN_REVIEW = config.get('human_review', False)
+        self.MODE = config.get("mode", "full")
 
 # Example usage:
 # config = Config()

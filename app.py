@@ -14,7 +14,7 @@ config = Config()
 processed_comments = set()
 app = Flask(__name__)
 
-Status(app, app.config["MONGO_URI"])
+Status(app, config.MONGO_URI)
 
 # MongoDB setup
 client = DatabaseManager().get_instance()
@@ -240,10 +240,18 @@ def handle_comment(comment_data):
             hide_comment(comment_id)
 
         elif int(result) == 2:
-            action_2(comment_id)
+            if config.MODE == "full":
+                action_2(comment_id)
+            
+            elif config.MODE == "max_hide":
+                hide_comment(comment_id)
 
         elif int(result) == 3:
-            action_2(comment_id)
+            if config.MODE == "full":
+                action_2(comment_id)
+            
+            elif config.MODE == "max_hide":
+                hide_comment(comment_id)
 
         elif int(result) == 4:
             hide_comment(comment_id) # First lets hide the comment so no one sees it whilst its pending for review.

@@ -100,6 +100,7 @@ class ModerationModel:
 
     def moderate_comment(self, comment):
         highest_result = ModerationResult.ACCEPT  # Start with the lowest moderation level
+        allowed_action = [1, 2, ]
         
         # Run all filters
         for filter_instance in self.filters:
