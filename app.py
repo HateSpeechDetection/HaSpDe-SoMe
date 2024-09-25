@@ -32,7 +32,7 @@ HUMAN_REVIEW = config.HUMAN_REVIEW
 ERROR_STATUS = json.dumps({'status': 'error'}), 200
 
 # Load models that we need
-moderation_model = ModerationModel(IMPROVE, HUMAN_REVIEW)
+moderation_model = ModerationModel(IMPROVE, HUMAN_REVIEW, certainty_needed=config.CERTAINTY_NEEDED)
 
 @app.route('/webhook', methods=['GET', 'POST'])
 def webhook():

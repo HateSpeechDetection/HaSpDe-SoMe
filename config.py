@@ -21,6 +21,7 @@ class Config:
         # Other settings
         self.IMPROVE = config.get('improve', True)
         self.HUMAN_REVIEW = config.get('human_review', False)
+        self.CERTAINTY_NEEDED = config.get("certainty_needed", 80)
         self.MODE = config.get("mode", "full")
 
 # Example usage:
