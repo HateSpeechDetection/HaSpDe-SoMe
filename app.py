@@ -235,10 +235,9 @@ def handle_comment(comment_data):
             logger.debug(f"Comment {comment_id} has been approved.")
         
         elif int(result) == 1:
-            action_2(comment_id)
+            #action_2(comment_id)
 
-            #hide(comment_id) # Here we will on future hide the comment #TODO: Hide the comment instead of deleting, when we get result 1
-            #logger.debug(f"Successfully hid {comment_id}.")
+            hide_comment(comment_id)
 
         elif int(result) == 2:
             action_2(comment_id)
@@ -247,6 +246,8 @@ def handle_comment(comment_data):
             action_2(comment_id)
 
         elif int(result) == 4:
+            hide_comment(comment_id) # First lets hide the comment so no one sees it whilst its pending for review.
+
             comments_collection.update_one({'id': comment_id}, {'$set': {'status': 'PENDING_REVIEW'}})
             logger.info(f"Comment {comment_id} is now in queue for human review.")
 
@@ -329,12 +330,7 @@ def evaluate_comment(comment_text):
     return evaluation
 
 
-def remove_comment(comment_id):
-    """
-    Remove a comment from Facebook or Instagram using the Graph API.
-    Parameters:
-    comment_id (str): The unique identifier for the comment to be removed.
-    """
+def init_comment(comment_id):
     # Fetch the comment details to get the media ID and platform
     comment = comments_collection.find_one({'id': comment_id})
     if not comment:
@@ -348,12 +344,20 @@ def remove_comment(comment_id):
         logger.error(f"No media ID found for comment ID {comment_id}.")
         return
 
-    if platform == "instagram":
-        url = f"https://graph.facebook.com/{INSTAGRAM_API_VERSION}/{comment_id}"
-        headers = {'Authorization': f'Bearer {INSTAGRAM_ACCESS_TOKEN}'}
+    return comment, media_id, platform
 
-    else:
-        url, headers = facebook_remove_handler(media_id, comment_id)
+
+def remove_comment(comment_id):
+    """
+    Remove a comment from Facebook or Instagram using the Graph API.
+    Parameters:
+    comment_id (str): The unique identifier for the comment to be removed.
+    """
+    comment, media_id, platform = init_comment(comment_id)
+
+    url = f"https://graph.facebook.com/{INSTAGRAM_API_VERSION}/{comment_id}"
+
+    headers = token_(media_id, platform)
 
     try:
         # Send a DELETE request to remove the comment
@@ -369,20 +373,56 @@ def remove_comment(comment_id):
     except requests.RequestException as e:
         logger.error(f"An error occurred while trying to remove comment with ID {comment_id}: {e}")
 
+def token_(media_id, platform):
+    if platform == "instagram":
+        access_token = INSTAGRAM_ACCESS_TOKEN
+
+    elif platform == "facebook":
+        owner_id = media_id.split('_')[0]  # Get the part before the underscore
+        access_token = get_facebook_token(owner_id)
+
+    headers = {'Authorization': f'Bearer {access_token}'}
+    return headers
+
+def hide_comment(comment_id):
+    """
+    Hide a comment on Instagram using Instagram Graph API.
+
+    :param access_token: A valid access token for the Instagram account.
+    :param comment_id: The ID of the comment to hide.
+    :return: Response of the API request.
+    """
+    comment, media_id, platform = init_comment(comment_id)
+
+    url = f"https://graph.facebook.com/{INSTAGRAM_API_VERSION}/{comment_id}"
+
+    headers = token_(media_id, platform)
+    params = {
+        "is_hidden": "true"
+    }
+    
+    response = requests.post(url, params=params, headers=headers)
+    
+    if response.status_code == 200:
+        logger.info(f"Comment with ID {comment_id} hid successfully.")
+        # Update the comment status in the database
+        comments_collection.update_many({'id': comment_id}, {'$set': {'status': 'HIDDEN'}})
+
+    else:
+        logger.warning(f"Failed to hide comment with ID {comment_id}. Status code: {response.status_code}, Response: {response.text}")
+
 def method_not_allowed():
     logger.warning("Method not allowed!")
     return jsonify({'error': 'Method not allowed'}), 405
 
-def facebook_remove_handler(media_id, comment_id):# For Facebook, derive the owner ID
-    owner_id = media_id.split('_')[0]  # Get the part before the underscore
-
+def get_facebook_token(owner_id):
     # Fetch user info to find the corresponding page access token
     user = db_2.users.find_one({'managed_pages.page_id': owner_id})
     if user:
         for page in user['managed_pages']:
             if page['page_id'] == owner_id:
                 page_access_token = page['page_access_token']
-                break
+                return page_access_token
         else:
             logger.critical(f"No access token found for owner ID {owner_id}.")
             return
@@ -390,10 +430,13 @@ def facebook_remove_handler(media_id, comment_id):# For Facebook, derive the own
         logger.critical(f"No user found for owner ID {owner_id}.")
         return
 
-    url = f"https://graph.facebook.com/{INSTAGRAM_API_VERSION}/{comment_id}"
+def facebook_remove_handler(media_id): # For Facebook, derive the owner ID
+    owner_id = media_id.split('_')[0]  # Get the part before the underscore
+    page_access_token = get_facebook_token(owner_id)
+
     headers = {'Authorization': f'Bearer {page_access_token}'}
 
-    return url, headers
+    return headers
 
 if __name__ == '__main__':
     app.run(debug=config.FLASK_DEBUG, port=config.FLASK_PORT)
