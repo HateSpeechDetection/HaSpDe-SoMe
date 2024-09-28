@@ -1,1 +1,5 @@
+# Git-based dependency for model-updater
 git+https://github.com/HateSpeechDetection/model-updater
+
+# Specifying the version constraint for scikit-learn
+scikit-learn>=5.1

@@ -4,3 +4,4 @@ HaSpDe/
 moderation_model.joblib
 model_version.txt
 __pycache__
+*.joblib
