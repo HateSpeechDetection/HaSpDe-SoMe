@@ -23,6 +23,7 @@ from filters import (
     SwearingFilter,
     BoyFilter,
     InclusiveSafetyFilter,
+    CustomFilter
 )
 
 from results import ModerationResult
@@ -175,11 +176,20 @@ class ModerationModel:
     def _01_label(self, label):
         return 0 if label in [0] else 1
     @performance_tracker
-    def moderate_comment(self, comment, interactive=False):
+    def moderate_comment(self, comment, config={}, interactive=False):
         highest_result = ModerationResult.ACCEPT  # Start with the lowest moderation level
         
+        filt = []
+
+        if config != {}:
+            filters = config.get("filters", [])
+            for filter in filters:
+                filt.append(CustomFilter(filter.get("name"), filter.get("0_action", None), filter.get("1_action", None)))
+        
+        filt.extend(self.filters)
+
         # Run all filters
-        for filter_instance in self.filters:
+        for filter_instance in filt:
             result = filter_instance.apply(comment)
             logger.info(f"🔍 Filter {filter_instance.__class__.__name__} returned: {result}")
 
