@@ -5,35 +5,36 @@ import json
 import os
 
 # Set up logging
-logger = logging.getLogger("HaSpDe")
+logger = logging
 
 class BaseFilter:
     """
     Base class for all text filters.
-
-    Attributes:
-        BASE_UPDATE_URL (str): The base URL where word lists are hosted for all filters.
-        offensive_words (list): A list of words considered offensive for the specific filter type.
-        filter_type (str): Type of the filter (e.g., "homophobia", "racism").
-        local_version (str): Local version of the word list, used to check for updates.
-        update_url (str): URL to fetch the word list for the specific filter.
-        version_url (str): URL to fetch the version of the word list for the specific filter.
     """
-    
+
     BASE_UPDATE_URL = "https://updates.haspde.luova.club/filters"  # Base update URL for all filters
 
     def __init__(self, filter_type: str):
         self.offensive_words = []
         self.filter_type = filter_type
-        self.local_version = "0"  # Local version of the word list
+        self.local_version = self.load_local_version()  # Load local version
         self.update_url = f"{self.BASE_UPDATE_URL}/{filter_type}"
         self.version_url = f"{self.update_url}/version"
         self.update_word_list()
 
+    def load_local_version(self) -> str:
+        """
+        Loads the local version of the word list from a JSON file.
+        """
+        try:
+            with open(f"filters/{self.filter_type}_version.json", "r") as f:
+                return json.load(f).get("version", "0")
+        except FileNotFoundError:
+            logger.info(f"No local version found for {self.filter_type}. Setting to 0.")
+            return "0"
+
     def update_word_list(self):
-        """
-        Fetches the updated word list from the server if a newer version is available.
-        """
+        """Fetches the updated word list from the server if a newer version is available."""
         try:
             response = requests.get(self.version_url)
             response.raise_for_status()
@@ -43,26 +44,29 @@ class BaseFilter:
                 logger.info(f"Updating {self.filter_type} word list from {self.update_url}...")
                 word_list_response = requests.get(self.update_url)
                 word_list_response.raise_for_status()
-                
-                # Save the new word list locally
-                self.offensive_words = word_list_response.json().get('words', [])
+
+                self.offensive_words = word_list_response.json().get("words", [])
                 self.save_word_list()  # Save to local file
-                self.local_version = server_version
-                logger.info(f"Updated {self.filter_type} word list: {self.offensive_words[:10]}...")  # Log first 10 words for brevity
+                self.save_local_version(server_version)  # Update version
+                logger.info(f"Updated {self.filter_type} word list: {self.offensive_words[:10]}...")
             else:
                 logger.info(f"{self.filter_type.capitalize()} word list is up to date.")
-                
+
         except Exception as e:
             logger.error(f"Failed to update {self.filter_type} word list: {e}")
 
     def save_word_list(self):
-        """
-        Saves the offensive words list to a local file.
-        """
-        os.makedirs(f"filters", exist_ok=True)
+        """Saves the offensive words list to a local file."""
+        os.makedirs("filters", exist_ok=True)
         with open(f"filters/{self.filter_type}_words.json", "w") as f:
             json.dump({"words": self.offensive_words}, f)
         logger.info(f"Saved {self.filter_type} word list to {self.filter_type}_words.json")
+
+    def save_local_version(self, version: str):
+        """Saves the local version of the word list."""
+        with open(f"filters/{self.filter_type}_version.json", "w") as f:
+            json.dump({"version": version}, f)
+        logger.info(f"Saved local version for {self.filter_type}: {version}")
 
     def apply(self, text) -> ModerationResult:
         """
@@ -70,20 +74,15 @@ class BaseFilter:
 
         Returns:
             ModerationResult: Result of the moderation, indicating the action to be taken (e.g., BAN, ACCEPT).
-
-        Raises:
-            NotImplementedError: This method must be implemented in subclasses.
         """
         raise NotImplementedError("Subclasses should implement this method.")
 
-
-
-# Subclasses using the BaseFilter with filter_type defined:
 
 class HomoPhobiaFilter(BaseFilter):
     """
     Filter for detecting homophobic language in text.
     """
+
     def __init__(self):
         """
         Initializes the HomoPhobiaFilter with the input text.
@@ -106,10 +105,38 @@ class HomoPhobiaFilter(BaseFilter):
         return ModerationResult(ModerationResult.ACCEPT)
 
 
+class JesusFilter(BaseFilter):
+    """
+    Filter for detecting jesus related stuff in text.
+    """
+
+    def __init__(self):
+        """
+        Initializes the JesusFilter with the input text.
+
+        Args:
+            text (str): The text to be filtered.
+        """
+        super().__init__(filter_type="jesus")
+
+    def apply(self, text) -> ModerationResult:
+        """
+        Applies the jesus filter to the text.
+
+        Returns:
+            ModerationResult: BAN if offensive words are detected, otherwise ACCEPT.
+        """
+        if any(word in text.lower() for word in self.offensive_words):
+            logger.info(f"Hate speech detected in comment: '{text}'")
+            return ModerationResult(ModerationResult.HUMAN_REVIEW)
+        return ModerationResult(ModerationResult.ACCEPT)
+
+
 class RacismFilter(BaseFilter):
     """
     Filter for detecting racist language in text.
     """
+
     def __init__(self):
         """
         Initializes the RacismFilter with the input text.
@@ -136,6 +163,7 @@ class SuicideFilter(BaseFilter):
     """
     Filter for detecting suicidal content in text.
     """
+
     def __init__(self):
         """
         Initializes the SuicideFilter with the input text.
@@ -162,6 +190,7 @@ class SwearingFilter(BaseFilter):
     """
     Filter for detecting swearing or profanity in text.
     """
+
     def __init__(self):
         """
         Initializes the SwearingFilter with the input text.
@@ -183,16 +212,18 @@ class SwearingFilter(BaseFilter):
             return ModerationResult(ModerationResult.HIDE)
         return ModerationResult(ModerationResult.ACCEPT)
 
+
 class TappouhkausFilter(BaseFilter):
     """
     Filter for detecting threatening or violent language in text.
     """
+
     def __init__(self):
         """
         Initializes the TappouhkausFilter.
         """
         super().__init__(filter_type="tappouhkaus")
-        
+
     def apply(self, text) -> ModerationResult:
         """
         Applies the tappouhkaus filter to the text.
@@ -205,10 +236,12 @@ class TappouhkausFilter(BaseFilter):
             return ModerationResult(ModerationResult.BAN)
         return ModerationResult(ModerationResult.ACCEPT)
 
+
 class FatPhobiaFilter(BaseFilter):
     """
     Filter for detecting fatphobic language in text.
     """
+
     def __init__(self):
         """
         Initializes the FatPhobiaFilter.
@@ -227,10 +260,184 @@ class FatPhobiaFilter(BaseFilter):
             return ModerationResult(ModerationResult.BAN)
         return ModerationResult(ModerationResult.ACCEPT)
 
+
+class InclusiveSafetyFilter(BaseFilter):
+    """
+    Filter for detecting offensive language in text.
+    """
+
+    def __init__(self):
+        """
+        Initializes the InclusiveSafetyFilter.
+        """
+        super().__init__(filter_type="inclusive_safety")
+        self.offensive_words = [
+            # Homophobia
+            "homo",
+            "lesbo",
+            "pervo",
+            "hintti",
+            "kurja",
+            "tuhlaajapoika",
+            "sukupuolihäiriö",
+            "et oo ihminen",
+            "turpakii",
+            "gay",
+            "queer",
+            "biphobia",
+            "transphobia",
+            # Racism
+            "neekeri",
+            "ulkomaalainen",
+            "mustalainen",
+            "arjalainen",
+            "musta",
+            "ruisku",
+            "racial slur",
+            "xenophobia",
+            "ethnic cleansing",
+            "stereotype",
+            # Suicide and Mental Health
+            "itsemurha",
+            "tapa itsesi",
+            "kuolema",
+            "apua",
+            "toivoton",
+            "masennus",
+            "itsensä vahingoittaminen",
+            "paha olo",
+            "viiltää",
+            "syrjäytyminen",
+            "crazy",
+            "insane",
+            "mental case",
+            "messed up",
+            "depression",
+            "anxiety",
+            "panic",
+            "therapy",
+            "counseling",
+            # Swearing and Aggression
+            "perkele",
+            "helvetti",
+            "vittu",
+            "paskaa",
+            "saatana",
+            "haista",
+            "kusi",
+            "tuhota",
+            "hyökkäys",
+            "väkivalta",
+            "satuttaa",
+            "ampua",
+            "tappaa",
+            "f***",
+            "sh*t",
+            "b*tch",
+            "d*ck",
+            # Fatphobia and Body Shaming
+            "fat",
+            "obese",
+            "chubby",
+            "overweight",
+            "ugly",
+            "disgusting",
+            "lame",
+            "skinny",
+            "too thin",
+            "too big",
+            "paksu",
+            "lihava",
+            "olet ruma",
+            "fatphobia",
+            "body shaming",
+            "weight shaming",
+            # Misogyny and Gender Discrimination
+            "bitch",
+            "slut",
+            "whore",
+            "feminazi",
+            "hysteria",
+            "pussy",
+            "naisen paikka",
+            "misogyny",
+            "sexism",
+            "mansplaining",
+            "objectify",
+            # Xenophobia
+            "immigrant",
+            "foreigner",
+            "refugee",
+            "alien",
+            "non-native",
+            "cultural appropriation",
+            "ethnic slurs",
+            "othering",
+            # Cultural Appropriation
+            "cultural theft",
+            "mocking culture",
+            "stereotypes",
+            "exotic",
+            "white savior",
+            "tokenism",
+            # Environmental Neglect
+            "climate change denial",
+            "pollution",
+            "wasteful",
+            "greed",
+            "deforestation",
+            "carbon footprint",
+            "environmental justice",
+            # Religious Extremism
+            "fanatic",
+            "extremist",
+            "cult",
+            "indoctrination",
+            "holy war",
+            "intolerance",
+            "proselytizing",
+            # Trolling and Cyberbullying
+            "troll",
+            "harassment",
+            "bully",
+            "nettirosvo",
+            "cyberbully",
+            "doxxing",
+            "threat",
+            "intimidation",
+            # Fun and Playful Additions
+            "middle finger",
+            "🖕",
+            "screw you",
+            "whatever",
+            "shoo",
+            "buzz off",
+            "not cool",
+            "bye felicia",
+        ]
+
+    def apply(self, text, training=True) -> ModerationResult:
+        """
+        Applies the inclusive safety filter to the text.
+
+        Returns:
+            ModerationResult: HUMAN_REVIEW if offensive words are detected, otherwise ACCEPT.
+        """
+        if any(word in text.lower() for word in self.offensive_words):
+            logger.info(f"Offensive content detected in comment: '{text}'")
+            return ModerationResult(
+                ModerationResult.HUMAN_REVIEW
+                if not training
+                else ModerationResult.REMOVE
+            )
+        return ModerationResult(ModerationResult.ACCEPT)
+
+
 class SexualViolenceFilter(BaseFilter):
     """
     Filter for detecting sexual violence language in text.
     """
+
     def __init__(self):
         """
         Initializes the SexualViolenceFilter.
@@ -249,10 +456,12 @@ class SexualViolenceFilter(BaseFilter):
             return ModerationResult(ModerationResult.HUMAN_REVIEW)
         return ModerationResult(ModerationResult.ACCEPT)
 
+
 class SexualHarassmentFilter(BaseFilter):
     """
     Filter for detecting sexual harassment language in text.
     """
+
     def __init__(self):
         """
         Initializes the SexualHarassmentFilter.
@@ -271,10 +480,12 @@ class SexualHarassmentFilter(BaseFilter):
             return ModerationResult(ModerationResult.HUMAN_REVIEW)
         return ModerationResult(ModerationResult.ACCEPT)
 
+
 class PannaaksFilter(BaseFilter):
     """
     Filter for detecting 'pannaaks' or related sexual content in text.
     """
+
     def __init__(self):
         """
         Initializes the PannaaksFilter.
@@ -293,10 +504,12 @@ class PannaaksFilter(BaseFilter):
             return ModerationResult(ModerationResult.HUMAN_REVIEW)
         return ModerationResult(ModerationResult.ACCEPT)
 
+
 class BoyFilter(BaseFilter):
     """
     Filter for detecting references to being a boy in text.
     """
+
     def __init__(self):
         """
         Initializes the BoyFilter.

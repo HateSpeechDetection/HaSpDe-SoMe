@@ -9,6 +9,8 @@ from status_package import Status
 from log import logger
 from config import Config
 
+
+
 # Initialization
 config = Config()
 processed_comments = set()
@@ -177,6 +179,7 @@ def process_instagram_comment(comment_data):
         # If human review is disabled, handle the comment
         if not HUMAN_REVIEW:
             handle_comment(comment_data)
+            
     else:
         logger.error("Comment ID is missing in the comment data.")
 

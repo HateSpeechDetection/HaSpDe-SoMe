@@ -3,3 +3,4 @@ filters/
 HaSpDe/
 moderation_model.joblib
 model_version.txt
+__pycache__
