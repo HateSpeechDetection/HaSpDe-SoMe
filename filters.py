@@ -6,7 +6,6 @@ import os
 
 # Set up logging
 logger = logging
-
 class BaseFilter:
     """
     Base class for all text filters.
@@ -20,7 +19,12 @@ class BaseFilter:
         self.local_version = self.load_local_version()  # Load local version
         self.update_url = f"{self.BASE_UPDATE_URL}/{filter_type}"
         self.version_url = f"{self.update_url}/version"
+        
+        # Update the word list
         self.update_word_list()
+        
+        # Load offensive words from local file
+        self.load_offensive_words()
 
     def load_local_version(self) -> str:
         """
@@ -55,6 +59,15 @@ class BaseFilter:
         except Exception as e:
             logger.error(f"Failed to update {self.filter_type} word list: {e}")
 
+    def load_offensive_words(self):
+        """Loads the offensive words list from a local JSON file."""
+        try:
+            with open(f"filters/{self.filter_type}_words.json", "r") as f:
+                self.offensive_words = json.load(f).get("words", [])
+                logger.info(f"Loaded {self.filter_type} offensive words: {self.offensive_words[:10]}...")
+        except FileNotFoundError:
+            logger.info(f"No local words file found for {self.filter_type}. Keeping the list empty.")
+
     def save_word_list(self):
         """Saves the offensive words list to a local file."""
         os.makedirs("filters", exist_ok=True)
@@ -76,6 +89,38 @@ class BaseFilter:
             ModerationResult: Result of the moderation, indicating the action to be taken (e.g., BAN, ACCEPT).
         """
         raise NotImplementedError("Subclasses should implement this method.")
+    
+class CustomFilter(BaseFilter):
+    """Custom filter"""
+
+    def __init__(self, filter_type="custom", _0_action: 'ModerationResult' = ModerationResult.ACCEPT, _1_action: 'ModerationResult' = ModerationResult.HIDE):
+        if not _0_action is None:
+            self._0_action = _0_action  # Action to take if no offensive words found
+        else:
+            self._0_action = ModerationResult.ACCEPT
+        
+        if not _1_action is None:
+            self._1_action = _1_action  # Action to take if offensive words found
+
+        else:
+            self._1_action = ModerationResult.HIDE
+
+        super().__init__(filter_type=filter_type)  # Call the base class constructor
+
+    def apply(self, text) -> ModerationResult:
+        """
+        Applies custom filter logic to the input text.
+
+        Returns:
+            ModerationResult: Result of the moderation, indicating the action to be taken (e.g., BAN, ACCEPT).
+        """
+        # Check if the text contains any offensive words
+        if any(word in text.lower() for word in self.offensive_words):
+            logger.info(f"Filter detected offensive content in comment: '{text}'")
+            return self._1_action  # Return the action for offensive words
+        
+        logger.info(f"No offensive content detected in comment: '{text}'")
+        return self._0_action  # Return the action for non-offensive content
 
 
 class HomoPhobiaFilter(BaseFilter):

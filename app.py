@@ -9,8 +9,6 @@ from status_package import Status
 from log import logger
 from config import Config
 
-
-
 # Initialization
 config = Config()
 processed_comments = set()
@@ -126,7 +124,6 @@ def handle_webhook_event(request):
         logger.error("CRITICAL ERROR")
 
     return jsonify({'status': 'ok'}), 200
-
 def process_facebook_comment(comment_data):
     """
     Process a Facebook comment and store it in the database.
@@ -143,17 +140,21 @@ def process_facebook_comment(comment_data):
         user_name = comment_data['from'].get('name', 'Unknown User')
         platform = 'facebook'
 
+        # Extract owner ID from the post_id (i.e., the part before the underscore)
+        owner_id = post_id.split('_')[0] if post_id else None
+
         # Ensure comment_id is present before proceeding
         if comment_id:
             # Store comment in MongoDB if it doesn't already exist
             if not comments_collection.find_one({'id': comment_id}):
                 comment_to_db(comment_id, comment_text, platform, user_id, user_name, post_id)
 
-            # If human review is disabled, handle the comment
+            # Pass the owner_id to the moderation model
             if not HUMAN_REVIEW:
-                handle_comment(comment_data)
+                handle_comment(comment_data, owner_id)
         else:
             logger.error("Comment ID is missing in the comment data.")
+
 
 def process_instagram_comment(comment_data):
     """
@@ -172,13 +173,14 @@ def process_instagram_comment(comment_data):
 
     # Ensure comment_id is present before proceeding
     if comment_id:
+        owner_id = get_instagram_owner_id(media_id)
         # Store comment in MongoDB if it doesn't already exist
         if not comments_collection.find_one({'id': comment_id}):
             comment_to_db(comment_id, comment_text, platform, user_id, user_name, media_id)
 
         # If human review is disabled, handle the comment
         if not HUMAN_REVIEW:
-            handle_comment(comment_data)
+            handle_comment(comment_data, owner_id)
             
     else:
         logger.error("Comment ID is missing in the comment data.")
@@ -232,13 +234,14 @@ def handle_action_based_on_mode(comment_id, fallback_action):
         action_2(comment_id)
     else:
         hide_comment(comment_id)
-
-def handle_comment(comment_data):
+        
+def handle_comment(comment_data, owner_id=None):
     """
     Process an incoming comment for moderation.
     
     Parameters:
     comment_data (dict): The data of the comment, including its ID and text.
+    owner_id (str, optional): The owner ID of the post where the comment was made.
     """
     # Extract comment ID and text based on the platform
     comment_id = comment_data.get('comment_id') or comment_data.get('id')
@@ -257,9 +260,34 @@ def handle_comment(comment_data):
     # Add comment ID to the processed set to avoid re-processing
     processed_comments.add(comment_id)
 
-    # Moderate the comment using the moderation model
-    moderation_result = moderation_model.moderate_comment(comment_text)
-    
+    # Retrieve the owner's configuration if needed
+    owner_config = get_owner_config(owner_id)
+    if owner_config is None:
+        logger.warning(f"No configuration found for owner ID '{owner_id}'. Proceeding with default settings.")
+
+    """OWNER CONFIG
+    {
+  "filters": [
+    {
+      "name": "filter1",
+      "_id": 
+    },
+    {
+      "name": "filter2",
+      "
+    }
+    // Add more filters as needed
+  ],
+  "max_hide": false,
+  "threshold": 80
+}
+
+    """
+
+
+    # Moderate the comment using the moderation model, including owner ID if necessary
+    moderation_result = moderation_model.moderate_comment(comment_text, owner_config)
+
     # Define action based on moderation result
     result_action_map = {
         0: approve_comment,
@@ -275,6 +303,50 @@ def handle_comment(comment_data):
         result_action(comment_id)
     else:
         logger.error(f"Unknown moderation result: {moderation_result} for comment {comment_id}")
+
+def get_owner_config(owner_id):
+    """
+    Retrieve the configuration for the owner based on their ID.
+
+    Parameters:
+    owner_id (str): The ID of the owner whose configuration is to be retrieved.
+
+    Returns:
+    dict: The owner's configuration or None if not found.
+    """
+    # Assuming you have a collection for owner configurations in the database
+    owner_config = db_2.owner_configs.find_one({'owner_id': owner_id})
+    return owner_config
+
+
+def get_instagram_owner_id(media_id):
+    """
+    Retrieve the owner ID for a given Instagram media or comment.
+    
+    Parameters:
+    media_id (str): The ID of the Instagram media or comment.
+
+    Returns:
+    str: The owner ID of the media or comment.
+    """
+    url = f"https://graph.facebook.com/{INSTAGRAM_API_VERSION}/{media_id}"
+    params = {
+        'fields': 'owner',
+        'access_token': INSTAGRAM_ACCESS_TOKEN
+    }
+
+    try:
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            return data.get('owner', {}).get('id')
+        else:
+            logger.warning(f"Failed to get owner ID for media {media_id}. Status code: {response.status_code}")
+            return None
+    except requests.RequestException as e:
+        logger.error(f"An error occurred while retrieving owner ID for media {media_id}: {e}")
+        return None
+
 
 def action_2(comment_id):
     remove(comment_id)  # Remove the comment if it is deemed inappropriate

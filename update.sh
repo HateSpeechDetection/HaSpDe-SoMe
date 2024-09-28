@@ -19,3 +19,5 @@ git pull origin main
 echo "✅ Update completed successfully!"
 echo "To initialize the model, run the following command:"
 echo "   python3 moderation_model.py"
+
+chmod +x update.sh
