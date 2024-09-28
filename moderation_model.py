@@ -181,7 +181,7 @@ class ModerationModel:
         
         filt = []
 
-        if config != {}:
+        if config != {} and not config is None:
             filters = config.get("filters", [])
             for filter in filters:
                 filt.append(CustomFilter(filter.get("name"), filter.get("0_action", None), filter.get("1_action", None)))
