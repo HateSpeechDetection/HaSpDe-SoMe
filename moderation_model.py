@@ -65,6 +65,7 @@ def get_most_probable_class_and_percent(model, X):
 class ModerationModel:
     def __init__(self, learns=True, human_review=False, certainty_needed=80,
                  model_file="moderation_model.joblib", vectorizer_file="tfidf_vectorizer.joblib"):
+        self.updater = ModelUpdater()
         self.model_file = model_file
         self.vectorizer_file = vectorizer_file
         self.model = self.load_model()
@@ -88,27 +89,83 @@ class ModerationModel:
         self._initialize()
 
     @performance_tracker
-    def load_model(self):
-        updater = ModelUpdater()
-        updater.update_model()
+    def load_model(self, attempt=0, max_attempts=2):
+        """
+        Load the machine learning model with retry logic.
+        
+        Args:
+            attempt (int): The current attempt number (default is 0).
+            max_attempts (int): Maximum number of retry attempts (default is 2).
+        
+        Returns:
+            model: The loaded machine learning model.
+        """
+        # Check for model updates
+        self.updater.update_model()
 
         try:
-            model = joblib.load(self.model_file)  # Load model with the correct file name
+            # Attempt to load the model
+            model = joblib.load(self.model_file)
             logger.info("🔥 Existing model loaded successfully. Let's go!")
         except Exception as e:
-            logger.error(f"💔 Failed to load the model: {e}")
-            exit()
+            logger.error(f"💔 Failed to load the model: {e}. Attempting to reinitialize it!")
+            
+            # Try to force reinitialize the model
+            try:
+                self.updater.update_model(force=True)
+                logger.info("🎨 Model reinitialized successfully.")
+            except Exception as reinit_error:
+                logger.error(f"❌ Error during reinitialization: {reinit_error}. Exiting.")
+                exit(1)
+
+            # Retry the loading process if maximum attempts not reached
+            if attempt < max_attempts:
+                logger.info(f"🔁 Retrying model load (attempt {attempt + 1}/{max_attempts})...")
+                return self.load_model(attempt=attempt + 1, max_attempts=max_attempts)
+            else:
+                logger.critical("💀 Maximum retries exceeded. Exiting.")
+                exit(1)
+
         return model
 
+
     @performance_tracker
-    def load_vectorizer(self):
+    def load_vectorizer(self, attempt=0, max_attempts=2):
+        """
+        Load the vectorizer with retry logic and error handling.
+
+        Args:
+            attempt (int): The current attempt number (default is 0).
+            max_attempts (int): Maximum number of retry attempts (default is 2).
+
+        Returns:
+            vectorizer: The loaded vectorizer.
+        """
         try:
-            vectorizer = joblib.load(self.vectorizer_file)  # Load vectorizer from file
+            # Attempt to load the vectorizer
+            vectorizer = joblib.load(self.vectorizer_file)
             logger.info("🎨 Vectorizer loaded successfully.")
         except Exception as e:
-            logger.error(f"🛑 Failed to load vectorizer: {e}")
-            exit()
+            logger.error(f"🛑 Failed to load vectorizer: {e}. Attempting to reinitialize model...")
+
+            # Try to force reinitialize the model
+            try:
+                self.updater.update_model(force=True)
+                logger.info("🎨 Model reinitialized successfully.")
+            except Exception as reinit_error:
+                logger.error(f"❌ Error during reinitialization: {reinit_error}. Exiting.")
+                exit(1)
+
+            # Retry loading the vectorizer if maximum attempts not reached
+            if attempt < max_attempts:
+                logger.info(f"🔁 Retrying vectorizer load (attempt {attempt + 1}/{max_attempts})...")
+                return self.load_vectorizer(attempt=attempt + 1, max_attempts=max_attempts)
+            else:
+                logger.critical("💀 Maximum retries exceeded. Exiting.")
+                exit(1)
+
         return vectorizer
+
 
     def _initialize(self):
         self.filters = [filter() for filter in self.filters]  # Instantiate each filter and store it
