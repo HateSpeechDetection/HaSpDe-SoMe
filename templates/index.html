@@ -42,6 +42,25 @@
             margin-bottom: 20px;
             display: none;
         }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+            color: #fff;
+        }
+        .badge.APPROVED {
+            background-color: #4caf50; /* Green */
+        }
+        .badge.WAITING_FOR_HUMAN_REVIEW {
+            background-color: #ff9800; /* Orange */
+        }
+        .badge.REJECTED {
+            background-color: #f44336; /* Red */
+        }
+        /* Add more badge colors for different statuses as needed */
     </style>
 </head>
 <body>
@@ -51,6 +70,7 @@
 <div class="notification" id="new-comment-notification">
     New comments have been added!
 </div>
+
 <script>
     let lastCommentId = null; // Track the last comment ID loaded
     const displayedCommentIds = new Set(); // Store displayed comment IDs
@@ -104,9 +124,11 @@
     }
 
     function createCommentElement(comment) {
+        const statusBadge = `<span class="badge ${comment.status}">${comment.status}</span>`;
         return `
             <div class="comment">
-                <strong>${comment.user_name} (${comment.platform})</strong>:<br>
+                <strong>${comment.user_name} (${comment.platform})</strong>:
+                ${statusBadge}<br>
                 ${comment.text}
             </div>
         `;
@@ -128,7 +150,6 @@
         setInterval(fetchNewComments, 5000);
     });
 </script>
-
 
 </body>
 </html>
