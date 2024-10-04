@@ -51,7 +51,6 @@
 <div class="notification" id="new-comment-notification">
     New comments have been added!
 </div>
-
 <script>
     let lastCommentId = null; // Track the last comment ID loaded
     const displayedCommentIds = new Set(); // Store displayed comment IDs
@@ -68,6 +67,7 @@
                     displayedCommentIds.add(comment._id); // Add ID to displayed set
                     lastCommentId = comment._id; // Update the last comment ID
                 });
+                scrollToBottom(); // Scroll to the bottom after loading initial comments
             },
             error: function(err) {
                 console.error('Error fetching initial comments:', err);
@@ -90,6 +90,7 @@
                         }
                     });
                     showNotification();
+                    scrollToBottom(); // Scroll to the bottom after adding new comments
                 }
             },
             error: function(err) {
@@ -115,6 +116,11 @@
         $('#new-comment-notification').fadeIn().delay(3000).fadeOut();
     }
 
+    function scrollToBottom() {
+        const commentLog = $('#comment-log');
+        commentLog.scrollTop(commentLog[0].scrollHeight); // Scroll to the bottom
+    }
+
     $(document).ready(function() {
         // Fetch initial comments on page load
         fetchInitialComments();
@@ -122,6 +128,7 @@
         setInterval(fetchNewComments, 5000);
     });
 </script>
+
 
 </body>
 </html>
