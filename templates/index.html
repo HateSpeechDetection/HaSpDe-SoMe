@@ -54,6 +54,7 @@
 
 <script>
     let lastCommentId = null; // Track the last comment ID loaded
+    const displayedCommentIds = new Set(); // Store displayed comment IDs
 
     function fetchInitialComments() {
         $.ajax({
@@ -63,7 +64,8 @@
             success: function(data) {
                 // Append initial comments and set the last comment ID
                 data.forEach(function(comment) {
-                    $('#comment-log').append(createCommentElement(comment));
+                    appendComment(comment);
+                    displayedCommentIds.add(comment._id); // Add ID to displayed set
                     lastCommentId = comment._id; // Update the last comment ID
                 });
             },
@@ -81,8 +83,11 @@
             success: function(data) {
                 if (data.length > 0) {
                     data.forEach(function(comment) {
-                        $('#comment-log').append(createCommentElement(comment));
-                        lastCommentId = comment._id; // Update the last comment ID
+                        if (!displayedCommentIds.has(comment._id)) { // Check for duplicates
+                            appendComment(comment);
+                            displayedCommentIds.add(comment._id); // Add ID to displayed set
+                            lastCommentId = comment._id; // Update the last comment ID
+                        }
                     });
                     showNotification();
                 }
@@ -91,6 +96,10 @@
                 console.error('Error fetching new comments:', err);
             }
         });
+    }
+
+    function appendComment(comment) {
+        $('#comment-log').append(createCommentElement(comment));
     }
 
     function createCommentElement(comment) {
