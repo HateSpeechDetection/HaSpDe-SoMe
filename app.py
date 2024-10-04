@@ -405,9 +405,13 @@ def skip(comment_id):
 def approve(comment_id):
     # Update the comment status in MongoDB
     comment = comments_collection.find_one({'id': comment_id})
-    moderation_model._log_comment(action_type=0, comment=comment["text"], label=0)
-    comments_collection.update_many({'id': comment_id}, {'$set': {'status': 'APPROVED'}})
-    hide_comment(comment_id, False, unhide=True)
+    try:
+        moderation_model._log_comment(action_type=0, comment=comment["text"], label=0)
+    except Exception as e:
+        pass
+    finally:
+        comments_collection.update_many({'id': comment_id}, {'$set': {'status': 'APPROVED'}})
+        hide_comment(comment_id, False, unhide=True)
     return redirect(url_for('review'))
 
 @app.route('/remove/<comment_id>', methods=['POST'])
@@ -484,6 +488,8 @@ def remove_comment(comment_id):
             # Update the comment status in the database
             comments_collection.update_many({'id': comment_id}, {'$set': {'status': 'REMOVED'}})
         else:
+            comments_collection.update_many({'id': comment_id}, {'$set': {'status': 'REMOVE_FAILED', "error": response.text}})
+
             logger.warning(f"Failed to remove comment with ID {comment_id}. Status code: {response.status_code}, Response: {response.text}")
 
     except requests.RequestException as e:
