@@ -64,7 +64,7 @@
                 // Append initial comments and set the last comment ID
                 data.forEach(function(comment) {
                     $('#comment-log').append(createCommentElement(comment));
-                    lastCommentId = comment.id; // Update the last comment ID
+                    lastCommentId = comment._id; // Update the last comment ID
                 });
             },
             error: function(err) {
@@ -82,7 +82,7 @@
                 if (data.length > 0) {
                     data.forEach(function(comment) {
                         $('#comment-log').append(createCommentElement(comment));
-                        lastCommentId = comment.id; // Update the last comment ID
+                        lastCommentId = comment._id; // Update the last comment ID
                     });
                     showNotification();
                 }
