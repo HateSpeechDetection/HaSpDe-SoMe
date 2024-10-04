@@ -126,12 +126,18 @@
     function createCommentElement(comment) {
         const statusBadge = `<span class="badge ${comment.status}">${comment.status}</span>`;
         return `
-            <div class="comment">
+            <div class="comment" id="comment-${comment._id}">
                 <strong>${comment.user_name} (${comment.platform})</strong>:
                 ${statusBadge}<br>
                 ${comment.text}
             </div>
         `;
+    }
+
+    function updateCommentStatus(comment) {
+        const commentElement = $(`#comment-${comment._id}`);
+        const newStatusBadge = `<span class="badge ${comment.status}">${comment.status}</span>`;
+        commentElement.find('.badge').replaceWith(newStatusBadge); // Update the badge
     }
 
     function showNotification() {
@@ -150,6 +156,7 @@
         setInterval(fetchNewComments, 5000);
     });
 </script>
+
 
 </body>
 </html>
