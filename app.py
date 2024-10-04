@@ -541,5 +541,39 @@ def facebook_remove_handler(media_id): # For Facebook, derive the owner ID
 
     return headers
 
+
+@app.route('/get_comments', methods=['GET'])
+def get_comments():
+    limit = int(request.args.get('limit', 10))  # Default to 10 if not specified
+    # Fetch the most recent comments
+    comments = list(comments_collection.find().sort('_id', -1).limit(limit))
+    
+    # Prepare comments for response (convert ObjectId to str)
+    for comment in comments:
+        comment['_id'] = str(comment['_id'])
+    
+    return jsonify(comments)
+
+@app.route('/get_new_comments', methods=['GET'])
+def get_new_comments():
+    after_id = request.args.get('afterId')
+    new_comments = []
+    
+    if after_id:
+        # Fetch comments that were added after the given comment ID
+        new_comments = list(comments_collection.find({
+            '_id': {'$gt': ObjectId(after_id)}
+        }).sort('_id', 1))  # Sort ascending to get newer comments
+
+    # Prepare comments for response
+    for comment in new_comments:
+        comment['_id'] = str(comment['_id'])
+
+    return jsonify(new_comments)
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
 if __name__ == '__main__':
     app.run(debug=config.FLASK_DEBUG, port=config.FLASK_PORT)

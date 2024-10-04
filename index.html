@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Comment Log</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+        }
+        #comment-log {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fff;
+            padding: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .comment {
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            transition: background 0.3s;
+        }
+        .comment:hover {
+            background: #f1f1f1;
+        }
+        .comment strong {
+            color: #333;
+        }
+        .notification {
+            padding: 10px;
+            background: #e0f7fa;
+            border: 1px solid #b2ebf2;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Comment Log</h1>
+<div id="comment-log"></div>
+<div class="notification" id="new-comment-notification">
+    New comments have been added!
+</div>
+
+<script>
+    let lastCommentId = null; // Track the last comment ID loaded
+
+    function fetchInitialComments() {
+        $.ajax({
+            url: '/get_comments',
+            method: 'GET',
+            data: { limit: 10 },
+            success: function(data) {
+                // Append initial comments and set the last comment ID
+                data.forEach(function(comment) {
+                    $('#comment-log').append(createCommentElement(comment));
+                    lastCommentId = comment.id; // Update the last comment ID
+                });
+            },
+            error: function(err) {
+                console.error('Error fetching initial comments:', err);
+            }
+        });
+    }
+
+    function fetchNewComments() {
+        $.ajax({
+            url: '/get_new_comments',
+            method: 'GET',
+            data: { afterId: lastCommentId },
+            success: function(data) {
+                if (data.length > 0) {
+                    data.forEach(function(comment) {
+                        $('#comment-log').append(createCommentElement(comment));
+                        lastCommentId = comment.id; // Update the last comment ID
+                    });
+                    showNotification();
+                }
+            },
+            error: function(err) {
+                console.error('Error fetching new comments:', err);
+            }
+        });
+    }
+
+    function createCommentElement(comment) {
+        return `
+            <div class="comment">
+                <strong>${comment.user_name} (${comment.platform})</strong>:<br>
+                ${comment.text}
+            </div>
+        `;
+    }
+
+    function showNotification() {
+        $('#new-comment-notification').fadeIn().delay(3000).fadeOut();
+    }
+
+    $(document).ready(function() {
+        // Fetch initial comments on page load
+        fetchInitialComments();
+        // Fetch new comments every 5 seconds
+        setInterval(fetchNewComments, 5000);
+    });
+</script>
+
+</body>
+</html>
