@@ -3,3 +3,4 @@ git+https://github.com/HateSpeechDetection/model-updater
 
 # Specifying the version constraint for scikit-learn
 scikit-learn>=1.5
+

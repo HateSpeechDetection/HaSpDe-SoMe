@@ -1,6 +1,8 @@
 from bson.objectid  import ObjectId
 import json
 import requests
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime
 from flask import Flask, request, jsonify, render_template, redirect, url_for
 from moderation_model import ModerationModel
 from database_manager import DatabaseManager
@@ -34,6 +36,24 @@ ERROR_STATUS = json.dumps({'status': 'error'}), 200
 
 # Load models that we need
 moderation_model = ModerationModel(IMPROVE, HUMAN_REVIEW, certainty_needed=config.CERTAINTY_NEEDED)
+
+def update_skipped_comments():
+    """Update comments with status 'skipped' to 'PENDING_REVIEW'."""
+    logger.info("Checking for comments with status 'skipped' to update to 'PENDING_REVIEW'.")
+
+    try:
+        result = comments_collection.update_many(
+            {'status': 'SKIPPED'},
+            {'$set': {'status': 'PENDING_REVIEW', 'updated_at': datetime.utcnow()}}
+        )
+        logger.info(f"Updated {result.modified_count} comments from 'skipped' to 'PENDING_REVIEW'.")
+    except Exception as e:
+        logger.error(f"Error updating comments: {e}")
+
+# Set up the scheduler
+scheduler = BackgroundScheduler()
+scheduler.add_job(func=update_skipped_comments, trigger="interval", minutes=15)
+scheduler.start()
 
 @app.route('/webhook', methods=['GET', 'POST'])
 def webhook():
@@ -220,12 +240,12 @@ def comment_to_db(comment_id, comment_text, platform, user_id=None, user_name='U
 
 def approve_comment(comment_id):
     """Approve the comment."""
-    approve(comment_id)
+    #approve(comment_id)
     logger.debug(f"Comment {comment_id} has been approved.")
 
 def send_for_human_review(comment_id):
     """Queue the comment for human review and hide it in the meantime."""
-    comments_collection.update_one({'id': comment_id}, {'$set': {'status': 'PENDING_REVIEW'}})
+    comments_collection.update_one({'id': comment_id}, {'$set': {'status': 'PENDING_REVIEW', 'hidden': '1'}})
     logger.info(f"Comment {comment_id} is now queued for human review.")
     hide_comment(comment_id, log=False)  # Hide the comment while pending review
 
@@ -234,7 +254,7 @@ def handle_action_based_on_mode(comment_id, fallback_action):
     if config.MODE == "full":
         action_2(comment_id)
     else:
-        hide_comment(comment_id)
+        send_for_human_review(comment_id)
         
 def handle_comment(comment_data, owner_id=None):
     """
@@ -480,40 +500,65 @@ def token_(media_id, platform):
     headers = {'Authorization': f'Bearer {access_token}'}
     return headers
 
+def _str_bool(value):
+    # If the input is a boolean, return its string representation
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    
+    # If the input is a string, check its value and return the corresponding boolean
+    elif isinstance(value, str):
+        value = value.lower()
+        if value == "true":
+            return True
+        elif value == "false":
+            return False
+    
+    # If the input is neither a boolean nor a recognized string, return None or raise an error
+    return None  # or raise ValueError("Input must be a boolean or a string.")
 def hide_comment(comment_id, log=True, unhide=False):
     """
-    Hide a comment on Instagram using Instagram Graph API.
+    Hide or unhide a comment on Instagram using the Instagram Graph API.
 
-    :param access_token: A valid access token for the Instagram account.
-    :param comment_id: The ID of the comment to hide.
+    :param comment_id: The ID of the comment to hide or unhide.
+    :param log: Whether to log the operation status (default is True).
+    :param unhide: If True, the comment will be unhidden; if False, it will be hidden (default is False).
     :return: Response of the API request.
     """
+    # Initialize the comment, media_id, and platform
     comment, media_id, platform = init_comment(comment_id)
 
+    # Construct the API endpoint URL
     url = f"https://graph.facebook.com/{INSTAGRAM_API_VERSION}/{comment_id}"
 
+    # Prepare the headers and parameters for the request
     headers = token_(media_id, platform)
     params = {
-        "is_hidden": "true",
-        "hide": True
+        "is_hidden": str(unhide).lower(),  # Set to 'true' for hiding, 'false' for unhiding
+        "hide": unhide  # Use the same boolean value for the 'hide' parameter
     }
 
-    if unhide:
-        params = {
-            "is_hidden": "false",
-            "hide": False
-        }    
-
+    # Send the POST request to the API
     response = requests.post(url, params=params, headers=headers)
-    
-    if response.status_code == 200:
-        logger.info(f"Comment with ID {comment_id} {'hid' if not unhide else 'unhid'} successfully.")
-        # Update the comment status in the database
-        if log:
-            comments_collection.update_many({'id': comment_id}, {'$set': {'status': 'HIDDEN'}})
 
+    # Process the response
+    if response.status_code == 200:
+        # Determine the new status and hidden state based on the operation
+        status = "APPROVED" if unhide else "HIDDEN"
+        hidden = 0 if unhide else 1
+
+        # Update the comment status in the database
+        to_set = {'hidden': hidden}
+        if log:
+            to_set['status'] = status
+
+        comments_collection.update_many({'id': comment_id}, {'$set': to_set})
+
+        # Log the action if logging is enabled
+        if log:
+            logger.info(f"Comment with ID {comment_id} has been {'un' if unhide else ''}hidden successfully.")
     else:
-        logger.warning(f"Failed to {'un' if unhide else ''}hide comment with ID {comment_id}. Status code: {response.status_code}, Response: {response.text}")
+        logger.warning(f"Failed to {'un' if unhide else ''}hide comment with ID {comment_id}. "
+                       f"Status code: {response.status_code}, Response: {response.text}")
 
 def method_not_allowed():
     logger.warning("Method not allowed!")
