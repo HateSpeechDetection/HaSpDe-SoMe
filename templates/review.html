@@ -26,6 +26,15 @@
                 <span class="text-gray-800" id="comment-text">Ladataan kommenttia...</span>
             </div>
 
+            <!-- Loading spinner -->
+            <div id="loading-spinner" class="hidden mt-4">
+                <svg class="animate-spin h-8 w-8 text-gray-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0112-6.926V3.07a9.932 9.932 0 00-7 0V5.07A8 8 0 014 12z"></path>
+                </svg>
+                <p class="text-gray-600 mt-2">Käsitellään...</p>
+            </div>
+
             <div class="mt-6 space-x-2">
                 <button class="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 transition duration-200" id="approve-btn" aria-label="Hyväksy kommentti">Hyväksy</button>
                 <button class="bg-yellow-600 text-white px-5 py-2 rounded-lg hover:bg-yellow-700 transition duration-200" id="skip-btn" aria-label="Ohita kommentti">Ohita</button>
@@ -40,6 +49,16 @@
 
     <script>
         let currentCommentId = null;
+
+        // Show loading spinner
+        function showLoadingSpinner() {
+            document.getElementById('loading-spinner').classList.remove('hidden');
+        }
+
+        // Hide loading spinner
+        function hideLoadingSpinner() {
+            document.getElementById('loading-spinner').classList.add('hidden');
+        }
 
         // Function to show flash messages
         function showFlashMessage(message, isError = false) {
@@ -66,6 +85,8 @@
 
         // Fetch the next comment for review
         async function fetchComment() {
+            showLoadingSpinner();  // Show loading while fetching
+
             try {
                 const response = await fetch('/api/review');
                 const data = await response.json();
@@ -80,12 +101,15 @@
             } catch (error) {
                 console.error('Error fetching comment:', error);
                 showFlashMessage('Virhe haettaessa kommenttia', true);
+            } finally {
+                hideLoadingSpinner();  // Hide loading after fetching is done
             }
         }
 
         // Approve the comment
         document.getElementById('approve-btn').addEventListener('click', async () => {
             if (currentCommentId) {
+                showLoadingSpinner();  // Show spinner while processing
                 try {
                     const response = await fetch(`/api/approve/${currentCommentId}`, { method: 'POST' });
                     const result = await response.json();
@@ -94,6 +118,8 @@
                 } catch (error) {
                     console.error('Error approving comment:', error);
                     showFlashMessage('Virhe hyväksyessä kommenttia', true);
+                } finally {
+                    hideLoadingSpinner();  // Hide spinner after processing
                 }
             }
         });
@@ -101,6 +127,7 @@
         // Skip the comment
         document.getElementById('skip-btn').addEventListener('click', async () => {
             if (currentCommentId) {
+                showLoadingSpinner();  // Show spinner while processing
                 try {
                     const response = await fetch(`/api/skip/${currentCommentId}`, { method: 'POST' });
                     const result = await response.json();
@@ -109,6 +136,8 @@
                 } catch (error) {
                     console.error('Error skipping comment:', error);
                     showFlashMessage('Virhe ohittaessa kommenttia', true);
+                } finally {
+                    hideLoadingSpinner();  // Hide spinner after processing
                 }
             }
         });
@@ -116,6 +145,7 @@
         // Remove the comment
         document.getElementById('remove-btn').addEventListener('click', async () => {
             if (currentCommentId) {
+                showLoadingSpinner();  // Show spinner while processing
                 try {
                     const response = await fetch(`/api/remove/${currentCommentId}`, { method: 'POST' });
                     const result = await response.json();
@@ -124,6 +154,8 @@
                 } catch (error) {
                     console.error('Error removing comment:', error);
                     showFlashMessage('Virhe poistaessa kommenttia', true);
+                } finally {
+                    hideLoadingSpinner();  // Hide spinner after processing
                 }
             }
         });
