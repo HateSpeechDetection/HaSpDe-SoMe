@@ -373,58 +373,107 @@ def action_2(comment_id):
     remove(comment_id)  # Remove the comment if it is deemed inappropriate
     logger.info(f"Comment {comment_id} has been removed.")
 
-@app.route('/review', methods=['GET'])
+@app.route("/review")
+def re():
+    return render_template("review.html")
+
+from flask import jsonify, request
+
+@app.route('/api/review', methods=['GET'])
 def review():
     """
-    Retrieve and render a pending comment for review.
+    API endpoint to retrieve a pending comment for review.
     Returns:
-    Response: Rendered HTML template for comment review or a message indicating no comments are pending.
+    Response: JSON with comment data or a message indicating no comments are pending.
     """
-    # Find a pending comment from the database
-    pending_comment = comments_collection.find_one({'status': 'PENDING_REVIEW'})
+    # Retrieve the pending comments and count them using len()
+    pending_comments = list(comments_collection.find({'status': 'PENDING_REVIEW'}))
+    pending_count = len(pending_comments)
     
-    if pending_comment:
+    # Find the first pending comment from the list
+    if pending_comments:
+        pending_comment = pending_comments[0]
         comment_id = pending_comment['id']
         comment_text = pending_comment['text']
-        evaluation_result = pending_comment['evaluation']
+        evaluation_result = pending_comment.get('evaluation', '')
 
-        # Update the status of the comment to 'in_review'
+        # Update the status of the comment to 'IN_REVIEW'
         comments_collection.update_one({'id': comment_id}, {'$set': {'status': 'IN_REVIEW'}})
 
-        return render_template('review.html', comment_id=comment_id, comment_text=comment_text, evaluation_result=evaluation_result)
+        return jsonify({
+            'comment_id': comment_id,
+            'comment_text': comment_text,
+            'evaluation_result': evaluation_result,
+            'pending_count': pending_count
+        })
     else:
-        return render_template("nothing_to_review.html")  # Render a template indicating no comments are available for review
+        return jsonify({
+            'message': "No comments pending for review",
+            'pending_count': pending_count
+        })
 
-@app.route('/skip/<comment_id>', methods=["POST"])
+
+@app.route('/api/skip/<comment_id>', methods=["POST"])
 def skip(comment_id):
+    """
+    API endpoint to skip a comment.
+    Returns:
+    Response: JSON confirming the skip action.
+    """
     # Update the comment status in MongoDB    
-    comments_collection.update_many({'id': comment_id}, {'$set': {'status': 'SKIPPED'}})
-    return redirect(url_for('review'))
+    result = comments_collection.update_one({'id': comment_id}, {'$set': {'status': 'SKIPPED'}})
+    
+    if result.modified_count > 0:
+        return jsonify({'message': 'Comment skipped successfully', 'comment_id': comment_id})
+    else:
+        return jsonify({'message': 'Comment not found or already skipped', 'comment_id': comment_id}), 404
 
-@app.route('/approve/<comment_id>', methods=['POST'])
+
+@app.route('/api/approve/<comment_id>', methods=['POST'])
 def approve(comment_id):
-    # Update the comment status in MongoDB
+    """
+    API endpoint to approve a comment.
+    Returns:
+    Response: JSON confirming the approval action.
+    """
+    # Find and approve the comment in MongoDB
     comment = comments_collection.find_one({'id': comment_id})
+    
+    if not comment:
+        return jsonify({'message': 'Comment not found', 'comment_id': comment_id}), 404
+    
     try:
         moderation_model._log_comment(action_type=0, comment=comment["text"], label=0)
     except Exception as e:
-        pass
-    finally:
-        comments_collection.update_many({'id': comment_id}, {'$set': {'status': 'APPROVED'}})
+        return jsonify({'error': str(e)}), 500
+    else:
+        comments_collection.update_one({'id': comment_id}, {'$set': {'status': 'APPROVED'}})
         hide_comment(comment_id, False, unhide=True)
-    return redirect(url_for('review'))
+        return jsonify({'message': 'Comment approved successfully', 'comment_id': comment_id})
 
-@app.route('/remove/<comment_id>', methods=['POST'])
+
+@app.route('/api/remove/<comment_id>', methods=['POST'])
 def remove(comment_id):
-    comment = comments_collection.find_one({'id': comment_id})  # Find the comment from the database
+    """
+    API endpoint to remove a comment.
+    Returns:
+    Response: JSON confirming the removal action.
+    """
+    # Find and remove the comment
+    comment = comments_collection.find_one({'id': comment_id})
     
-    comments_collection.update_many({'id': comment_id}, {'$set': {'status': 'PENDING_REMOVE'}})  # Let database know, that we will soon remove the comment from the social media platform
-    
-    moderation_model._log_comment(action_type=2, comment=comment["text"], label=1)  # On our AI model, add to training data
-    
-    remove_comment(comment_id)
-    
-    return redirect(url_for('review'))
+    if not comment:
+        return jsonify({'message': 'Comment not found', 'comment_id': comment_id}), 404
+
+    comments_collection.update_one({'id': comment_id}, {'$set': {'status': 'PENDING_REMOVE'}})
+
+    try:
+        moderation_model._log_comment(action_type=2, comment=comment["text"], label=1)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    else:
+        remove_comment(comment_id)
+        return jsonify({'message': 'Comment removed successfully', 'comment_id': comment_id})
 
 def evaluate_comment(comment_text):
     """

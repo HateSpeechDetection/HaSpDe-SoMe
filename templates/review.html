@@ -18,19 +18,13 @@
             <h2 class="text-3xl font-bold text-green-600 mb-4">Tarkista kommentti</h2>
             <p class="mb-2 font-semibold text-gray-700">Kommentti:</p>
             <div class="bg-blue-100 p-4 rounded-lg mb-4 max-h-48 overflow-auto shadow-inner">
-                <span class="text-gray-800">{{ comment_text }}</span>
+                <span class="text-gray-800" id="comment-text">Ladataan kommenttia...</span>
             </div>
-            
+
             <div class="mt-6 space-x-2">
-                <form action="{{ url_for('approve', comment_id=comment_id) }}" method="post" class="inline-block">
-                    <button class="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 transition duration-200" type="submit" aria-label="Hyväksy kommentti">Hyväksy</button>
-                </form>
-                <form action="{{ url_for('skip', comment_id=comment_id) }}" method="post" class="inline-block">
-                    <button class="bg-yellow-600 text-white px-5 py-2 rounded-lg hover:bg-yellow-700 transition duration-200" type="submit" aria-label="Ohita kommentti">Ohita</button>
-                </form>
-                <form action="{{ url_for('remove', comment_id=comment_id) }}" method="post" class="inline-block">
-                    <button class="bg-red-600 text-white px-5 py-2 rounded-lg hover:bg-red-700 transition duration-200" type="submit" aria-label="Poista kommentti">Poista</button>
-                </form>
+                <button class="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 transition duration-200" id="approve-btn" aria-label="Hyväksy kommentti">Hyväksy</button>
+                <button class="bg-yellow-600 text-white px-5 py-2 rounded-lg hover:bg-yellow-700 transition duration-200" id="skip-btn" aria-label="Ohita kommentti">Ohita</button>
+                <button class="bg-red-600 text-white px-5 py-2 rounded-lg hover:bg-red-700 transition duration-200" id="remove-btn" aria-label="Poista kommentti">Poista</button>
             </div>
         </div>
     </main>
@@ -38,6 +32,73 @@
     <footer class="bg-white shadow mt-4 p-4 text-center">
         <p>© 2024 <a href="https://luova.club">LuovaClub</a>. Kaikki oikeudet pidätetään.</p>
     </footer>
+
+    <script>
+        let currentCommentId = null;
+
+        // Fetch the next comment for review
+        async function fetchComment() {
+            try {
+                const response = await fetch('/api/review');
+                const data = await response.json();
+
+                if (data.comment_id) {
+                    document.getElementById('comment-text').textContent = data.comment_text;
+                    currentCommentId = data.comment_id;
+                } else {
+                    document.getElementById('comment-text').textContent = "Ei kommentteja tarkistettavana.";
+                    currentCommentId = null;
+                }
+            } catch (error) {
+                console.error('Error fetching comment:', error);
+            }
+        }
+
+        // Approve the comment
+        document.getElementById('approve-btn').addEventListener('click', async () => {
+            if (currentCommentId) {
+                try {
+                    const response = await fetch(`/api/approve/${currentCommentId}`, { method: 'POST' });
+                    const result = await response.json();
+                    alert(result.message);
+                    fetchComment();  // Load the next comment after approval
+                } catch (error) {
+                    console.error('Error approving comment:', error);
+                }
+            }
+        });
+
+        // Skip the comment
+        document.getElementById('skip-btn').addEventListener('click', async () => {
+            if (currentCommentId) {
+                try {
+                    const response = await fetch(`/api/skip/${currentCommentId}`, { method: 'POST' });
+                    const result = await response.json();
+                    alert(result.message);
+                    fetchComment();  // Load the next comment after skipping
+                } catch (error) {
+                    console.error('Error skipping comment:', error);
+                }
+            }
+        });
+
+        // Remove the comment
+        document.getElementById('remove-btn').addEventListener('click', async () => {
+            if (currentCommentId) {
+                try {
+                    const response = await fetch(`/api/remove/${currentCommentId}`, { method: 'POST' });
+                    const result = await response.json();
+                    alert(result.message);
+                    fetchComment();  // Load the next comment after removal
+                } catch (error) {
+                    console.error('Error removing comment:', error);
+                }
+            }
+        });
+
+        // Fetch the first comment when the page loads
+        fetchComment();
+    </script>
 </body>
 
 </html>
