@@ -13,6 +13,11 @@
         <h1 class="text-2xl font-bold text-green-600 text-center">HaSpDe SoMeHuRe-järjestelmä</h1>
     </header>
 
+    <!-- Flash message container -->
+    <div id="flash-message" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative max-w-md mx-auto mt-4" role="alert">
+        <span class="block sm:inline" id="flash-text">Message goes here.</span>
+    </div>
+
     <main class="flex-grow flex justify-center items-center">
         <div class="container bg-white p-8 rounded-lg shadow-xl w-full max-w-md text-center">
             <h2 class="text-3xl font-bold text-green-600 mb-4">Tarkista kommentti</h2>
@@ -36,6 +41,29 @@
     <script>
         let currentCommentId = null;
 
+        // Function to show flash messages
+        function showFlashMessage(message, isError = false) {
+            const flashMessage = document.getElementById('flash-message');
+            const flashText = document.getElementById('flash-text');
+
+            flashText.textContent = message;
+            flashMessage.classList.remove('hidden');
+
+            // If it's an error, change the style
+            if (isError) {
+                flashMessage.classList.remove('bg-green-100', 'text-green-700', 'border-green-400');
+                flashMessage.classList.add('bg-red-100', 'text-red-700', 'border-red-400');
+            } else {
+                flashMessage.classList.remove('bg-red-100', 'text-red-700', 'border-red-400');
+                flashMessage.classList.add('bg-green-100', 'text-green-700', 'border-green-400');
+            }
+
+            // Automatically hide the message after 3 seconds
+            setTimeout(() => {
+                flashMessage.classList.add('hidden');
+            }, 3000);
+        }
+
         // Fetch the next comment for review
         async function fetchComment() {
             try {
@@ -51,6 +79,7 @@
                 }
             } catch (error) {
                 console.error('Error fetching comment:', error);
+                showFlashMessage('Virhe haettaessa kommenttia', true);
             }
         }
 
@@ -60,10 +89,11 @@
                 try {
                     const response = await fetch(`/api/approve/${currentCommentId}`, { method: 'POST' });
                     const result = await response.json();
-                    alert(result.message);
+                    showFlashMessage(result.message);
                     fetchComment();  // Load the next comment after approval
                 } catch (error) {
                     console.error('Error approving comment:', error);
+                    showFlashMessage('Virhe hyväksyessä kommenttia', true);
                 }
             }
         });
@@ -74,10 +104,11 @@
                 try {
                     const response = await fetch(`/api/skip/${currentCommentId}`, { method: 'POST' });
                     const result = await response.json();
-                    alert(result.message);
+                    showFlashMessage(result.message);
                     fetchComment();  // Load the next comment after skipping
                 } catch (error) {
                     console.error('Error skipping comment:', error);
+                    showFlashMessage('Virhe ohittaessa kommenttia', true);
                 }
             }
         });
@@ -88,10 +119,11 @@
                 try {
                     const response = await fetch(`/api/remove/${currentCommentId}`, { method: 'POST' });
                     const result = await response.json();
-                    alert(result.message);
+                    showFlashMessage(result.message);
                     fetchComment();  // Load the next comment after removal
                 } catch (error) {
                     console.error('Error removing comment:', error);
+                    showFlashMessage('Virhe poistaessa kommenttia', true);
                 }
             }
         });
