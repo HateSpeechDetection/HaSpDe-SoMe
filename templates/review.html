@@ -10,7 +10,10 @@
 
 <body class="bg-gradient-to-r from-indigo-200 to-blue-300 flex flex-col min-h-screen">
     <header class="bg-white shadow p-4">
-        <h1 class="text-2xl font-bold text-green-600 text-center">HaSpDe SoMeHuRe-järjestelmä</h1>
+        <h1 class="text-2xl font-bold text-green-600 text-center">
+            HaSpDe SoMeHuRe-järjestelmä
+            <span id="pending-comments" class="text-sm text-gray-500"> (0 kommenttia odottaa tarkistusta)</span>
+        </h1>
     </header>
 
     <!-- Flash message container -->
@@ -68,7 +71,6 @@
             flashText.textContent = message;
             flashMessage.classList.remove('hidden');
 
-            // If it's an error, change the style
             if (isError) {
                 flashMessage.classList.remove('bg-green-100', 'text-green-700', 'border-green-400');
                 flashMessage.classList.add('bg-red-100', 'text-red-700', 'border-red-400');
@@ -77,13 +79,12 @@
                 flashMessage.classList.add('bg-green-100', 'text-green-700', 'border-green-400');
             }
 
-            // Automatically hide the message after 3 seconds
             setTimeout(() => {
                 flashMessage.classList.add('hidden');
             }, 3000);
         }
 
-        // Fetch the next comment for review
+        // Fetch the next comment for review and update the pending comment count
         async function fetchComment() {
             showLoadingSpinner();  // Show loading while fetching
 
@@ -94,9 +95,12 @@
                 if (data.comment_id) {
                     document.getElementById('comment-text').textContent = data.comment_text;
                     currentCommentId = data.comment_id;
+                    // Update pending comments count
+                    document.getElementById('pending-comments').textContent = `(${data.pending_count} kommenttia odottaa tarkistusta)`;
                 } else {
                     document.getElementById('comment-text').textContent = "Ei kommentteja tarkistettavana.";
                     currentCommentId = null;
+                    document.getElementById('pending-comments').textContent = "(0 kommenttia odottaa tarkistusta)";
                 }
             } catch (error) {
                 console.error('Error fetching comment:', error);
