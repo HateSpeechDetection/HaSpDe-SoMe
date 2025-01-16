@@ -1,16 +1,18 @@
 class ModerationResult:
-    """A class for representing moderation outcomes in HaSpDe.
+    """
+    A class for representing moderation outcomes in HaSpDe.
 
     Moderation results are represented by the following constants:
-    
+
     - ACCEPT: 0
     - HIDE: 1
     - REMOVE: 2
     - BAN: 3
     - HUMAN_REVIEW: 4
 
-    Example:
-        result = ModerationResult(ModerationResult.ACCEPT)  # Creates an instance with ACCEPT (0)
+    Example
+    -------
+    result = ModerationResult(ModerationResult.ACCEPT)  # Creates an instance with ACCEPT (0)
     """
 
     # Define constants for moderation actions
@@ -30,23 +32,32 @@ class ModerationResult:
     }
 
     def __init__(self, result: str | int | bool | None = None, is_error: bool = False):
-        """Initialize a ModerationResult instance.
-
-        Args:
-            result (str | int | bool | None): The result of moderation.
-            is_error (bool): Indicates if there was an error.
         """
-        self.result = self._resolve_result(result)
-        self.is_error = is_error
+        Initialize a ModerationResult instance.
+
+        Parameters
+        ----------
+        result : str | int | bool | None
+            The result of moderation.
+        is_error : bool
+            Indicates if there was an error.
+        """
+        self.result_ = self._resolve_result(result)
+        self.is_error_ = is_error
 
     def _resolve_result(self, result: str | int | bool | None) -> int | None:
-        """Resolve the provided result into a valid moderation result.
+        """
+        Resolve the provided result into a valid moderation result.
 
-        Args:
-            result (str | int | bool | None): The input to resolve.
+        Parameters
+        ----------
+        result : str | int | bool | None
+            The input to resolve.
 
-        Returns:
-            int | None: A valid moderation result or None if invalid.
+        Returns
+        -------
+        int | None
+            A valid moderation result or None if invalid.
         """
         if isinstance(result, bool):
             return self.ACCEPT if result else self.HIDE  # False now resolves to HIDE
@@ -57,13 +68,13 @@ class ModerationResult:
         return None  # Return None for invalid inputs
 
     def __repr__(self) -> str:
-        return f"<ModerationResult(result={self.result}, is_error={self.is_error})>"
+        return f"<ModerationResult(result={self.result_}, is_error={self.is_error_})>"
 
     def __str__(self) -> str:
-        return self.RESULT_MAPPING.get(self.result, 'UNKNOWN')
+        return self.RESULT_MAPPING.get(self.result_, 'UNKNOWN')
 
     def __int__(self) -> int:
-        return int(self.result) if isinstance(self.result, int) else -1
+        return int(self.result_) if isinstance(self.result_, int) else -1
 
     def __call__(self, *args: any, **kwds: any) -> str:
         """Return the string representation of the result."""
@@ -71,4 +82,4 @@ class ModerationResult:
 
     def __bool__(self) -> bool:
         """Determine the truth value of the result."""
-        return not self.is_error and self.result is not None
+        return not self.is_error_ and self.result_ is not None

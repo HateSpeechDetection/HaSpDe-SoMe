@@ -5,15 +5,37 @@ import json
 import os
 
 # Set up logging
-logger = logging
+logger = logging.getLogger(__name__)
+
 class BaseFilter:
     """
     Base class for all text filters.
+
+    Attributes
+    ----------
+    offensive_words : list
+        List of offensive words to filter.
+    filter_type : str
+        Type of the filter.
+    local_version : str
+        Local version of the word list.
+    update_url : str
+        URL to fetch updates for the word list.
+    version_url : str
+        URL to check the version of the word list.
     """
 
     BASE_UPDATE_URL = "https://updates.haspde.luova.club/filters"  # Base update URL for all filters
 
     def __init__(self, filter_type: str):
+        """
+        Initialize the BaseFilter.
+
+        Parameters
+        ----------
+        filter_type : str
+            Type of the filter.
+        """
         self.offensive_words = []
         self.filter_type = filter_type
         self.local_version = self.load_local_version()  # Load local version
@@ -29,6 +51,11 @@ class BaseFilter:
     def load_local_version(self) -> str:
         """
         Loads the local version of the word list from a JSON file.
+
+        Returns
+        -------
+        str
+            Local version of the word list.
         """
         try:
             with open(f"filters/{self.filter_type}_version.json", "r") as f:
@@ -85,42 +112,64 @@ class BaseFilter:
         """
         Applies the filter logic to the input text.
 
-        Returns:
-            ModerationResult: Result of the moderation, indicating the action to be taken (e.g., BAN, ACCEPT).
+        Parameters
+        ----------
+        text : str
+            The text to be filtered.
+
+        Returns
+        -------
+        ModerationResult
+            Result of the moderation, indicating the action to be taken (e.g., BAN, ACCEPT).
         """
         raise NotImplementedError("Subclasses should implement this method.")
     
 class CustomFilter(BaseFilter):
-    """Custom filter"""
+    """
+    Custom filter class.
 
-    def __init__(self, filter_type="custom", _0_action: 'ModerationResult' = ModerationResult.ACCEPT, _1_action: 'ModerationResult' = ModerationResult.HIDE):
-        if not _0_action is None:
-            self._0_action = _0_action  # Action to take if no offensive words found
-        else:
-            self._0_action = ModerationResult.ACCEPT
-        
-        if not _1_action is None:
-            self._1_action = _1_action  # Action to take if offensive words found
+    Attributes
+    ----------
+    zero_action : ModerationResult
+        Action to take if no offensive words are found.
+    one_action : ModerationResult
+        Action to take if offensive words are found.
+    """
 
+    def __init__(self, filter_type="custom", zero_action: 'ModerationResult' = ModerationResult.ACCEPT, one_action: 'ModerationResult' = ModerationResult.HIDE):
+        if zero_action is not None:
+            self.zero_action = zero_action
         else:
-            self._1_action = ModerationResult.HIDE
+            self.zero_action = ModerationResult.ACCEPT
+
+        if one_action is not None:
+            self.one_action = one_action
+        else:
+            self.one_action = ModerationResult.HIDE
 
         super().__init__(filter_type=filter_type)  # Call the base class constructor
 
     def apply(self, text) -> ModerationResult:
         """
-        Applies custom filter logic to the input text.
+        Apply the custom filter to the text.
 
-        Returns:
-            ModerationResult: Result of the moderation, indicating the action to be taken (e.g., BAN, ACCEPT).
+        Parameters
+        ----------
+        text : str
+            The text to be filtered.
+
+        Returns
+        -------
+        ModerationResult
+            Result of the moderation.
         """
         # Check if the text contains any offensive words
         if any(word in text.lower() for word in self.offensive_words):
             logger.info(f"Filter detected offensive content in comment: '{text}'")
-            return self._1_action  # Return the action for offensive words
+            return self.one_action  # Return the action for offensive words
         
         logger.info(f"No offensive content detected in comment: '{text}'")
-        return self._0_action  # Return the action for non-offensive content
+        return self.zero_action  # Return the action for non-offensive content
 
 
 class HomoPhobiaFilter(BaseFilter):
@@ -130,10 +179,7 @@ class HomoPhobiaFilter(BaseFilter):
 
     def __init__(self):
         """
-        Initializes the HomoPhobiaFilter with the input text.
-
-        Args:
-            text (str): The text to be filtered.
+        Initializes the HomoPhobiaFilter.
         """
         super().__init__(filter_type="homophobia")
 
@@ -141,8 +187,15 @@ class HomoPhobiaFilter(BaseFilter):
         """
         Applies the homophobia filter to the text.
 
-        Returns:
-            ModerationResult: BAN if offensive words are detected, otherwise ACCEPT.
+        Parameters
+        ----------
+        text : str
+            The text to be filtered.
+
+        Returns
+        -------
+        ModerationResult
+            BAN if offensive words are detected, otherwise ACCEPT.
         """
         if any(word in text.lower() for word in self.offensive_words):
             logger.info(f"Hate speech detected in comment: '{text}'")
@@ -157,10 +210,7 @@ class JesusFilter(BaseFilter):
 
     def __init__(self):
         """
-        Initializes the JesusFilter with the input text.
-
-        Args:
-            text (str): The text to be filtered.
+        Initializes the JesusFilter.
         """
         super().__init__(filter_type="jesus")
 
@@ -168,8 +218,15 @@ class JesusFilter(BaseFilter):
         """
         Applies the jesus filter to the text.
 
-        Returns:
-            ModerationResult: BAN if offensive words are detected, otherwise ACCEPT.
+        Parameters
+        ----------
+        text : str
+            The text to be filtered.
+
+        Returns
+        -------
+        ModerationResult
+            BAN if offensive words are detected, otherwise ACCEPT.
         """
         if any(word in text.lower() for word in self.offensive_words):
             logger.info(f"Hate speech detected in comment: '{text}'")
@@ -184,10 +241,7 @@ class RacismFilter(BaseFilter):
 
     def __init__(self):
         """
-        Initializes the RacismFilter with the input text.
-
-        Args:
-            text (str): The text to be filtered.
+        Initializes the RacismFilter.
         """
         super().__init__(filter_type="racism")
 
@@ -195,8 +249,15 @@ class RacismFilter(BaseFilter):
         """
         Applies the racism filter to the text.
 
-        Returns:
-            ModerationResult: BAN if offensive words are detected, otherwise ACCEPT.
+        Parameters
+        ----------
+        text : str
+            The text to be filtered.
+
+        Returns
+        -------
+        ModerationResult
+            BAN if offensive words are detected, otherwise ACCEPT.
         """
         if any(word in text.lower() for word in self.offensive_words):
             logger.info(f"Racist content detected in comment: '{text}'")
@@ -211,10 +272,7 @@ class SuicideFilter(BaseFilter):
 
     def __init__(self):
         """
-        Initializes the SuicideFilter with the input text.
-
-        Args:
-            text (str): The text to be filtered.
+        Initializes the SuicideFilter.
         """
         super().__init__(filter_type="suicide")
 
@@ -222,8 +280,15 @@ class SuicideFilter(BaseFilter):
         """
         Applies the suicide filter to the text.
 
-        Returns:
-            ModerationResult: HUMAN_REVIEW if concerning content is detected, otherwise ACCEPT.
+        Parameters
+        ----------
+        text : str
+            The text to be filtered.
+
+        Returns
+        -------
+        ModerationResult
+            HUMAN_REVIEW if concerning content is detected, otherwise ACCEPT.
         """
         if any(word in text.lower() for word in self.offensive_words):
             logger.info(f"Suicidal content detected in comment: '{text}'")
@@ -238,10 +303,7 @@ class SwearingFilter(BaseFilter):
 
     def __init__(self):
         """
-        Initializes the SwearingFilter with the input text.
-
-        Args:
-            text (str): The text to be filtered.
+        Initializes the SwearingFilter.
         """
         super().__init__(filter_type="swearing")
 
@@ -249,8 +311,15 @@ class SwearingFilter(BaseFilter):
         """
         Applies the swearing filter to the text.
 
-        Returns:
-            ModerationResult: HIDE if swearing is detected, otherwise ACCEPT.
+        Parameters
+        ----------
+        text : str
+            The text to be filtered.
+
+        Returns
+        -------
+        ModerationResult
+            HIDE if swearing is detected, otherwise ACCEPT.
         """
         if any(word in text.lower() for word in self.offensive_words):
             logger.info(f"Swearing detected in comment: '{text}'")
@@ -273,8 +342,15 @@ class TappouhkausFilter(BaseFilter):
         """
         Applies the tappouhkaus filter to the text.
 
-        Returns:
-            ModerationResult: BAN if threatening words are detected, otherwise ACCEPT.
+        Parameters
+        ----------
+        text : str
+            The text to be filtered.
+
+        Returns
+        -------
+        ModerationResult
+            BAN if threatening words are detected, otherwise ACCEPT.
         """
         if any(word in text.lower() for word in self.offensive_words):
             logger.info(f"Threatening language detected in comment: '{text}'")
@@ -297,8 +373,15 @@ class FatPhobiaFilter(BaseFilter):
         """
         Applies the fatphobia filter to the text.
 
-        Returns:
-            ModerationResult: BAN if offensive words are detected, otherwise ACCEPT.
+        Parameters
+        ----------
+        text : str
+            The text to be filtered.
+
+        Returns
+        -------
+        ModerationResult
+            BAN if offensive words are detected, otherwise ACCEPT.
         """
         if any(word in text.lower() for word in self.offensive_words):
             logger.info(f"Fatphobic content detected in comment: '{text}'")
@@ -465,8 +548,17 @@ class InclusiveSafetyFilter(BaseFilter):
         """
         Applies the inclusive safety filter to the text.
 
-        Returns:
-            ModerationResult: HUMAN_REVIEW if offensive words are detected, otherwise ACCEPT.
+        Parameters
+        ----------
+        text : str
+            The text to be filtered.
+        training : bool, optional
+            Whether the filter is being applied in a training context, by default True.
+
+        Returns
+        -------
+        ModerationResult
+            HUMAN_REVIEW if offensive words are detected, otherwise ACCEPT.
         """
         if any(word in text.lower() for word in self.offensive_words):
             logger.info(f"Offensive content detected in comment: '{text}'")
@@ -493,8 +585,15 @@ class SexualViolenceFilter(BaseFilter):
         """
         Applies the sexual violence filter to the text.
 
-        Returns:
-            ModerationResult: HUMAN_REVIEW if offensive words are detected, otherwise ACCEPT.
+        Parameters
+        ----------
+        text : str
+            The text to be filtered.
+
+        Returns
+        -------
+        ModerationResult
+            HUMAN_REVIEW if offensive words are detected, otherwise ACCEPT.
         """
         if any(word in text.lower() for word in self.offensive_words):
             logger.info(f"Sexual violence content detected in comment: '{text}'")
@@ -517,8 +616,15 @@ class SexualHarassmentFilter(BaseFilter):
         """
         Applies the sexual harassment filter to the text.
 
-        Returns:
-            ModerationResult: HUMAN_REVIEW if offensive words are detected, otherwise ACCEPT.
+        Parameters
+        ----------
+        text : str
+            The text to be filtered.
+
+        Returns
+        -------
+        ModerationResult
+            HUMAN_REVIEW if offensive words are detected, otherwise ACCEPT.
         """
         if any(word in text.lower() for word in self.offensive_words):
             logger.info(f"Sexual harassment content detected in comment: '{text}'")
@@ -541,8 +647,15 @@ class PannaaksFilter(BaseFilter):
         """
         Applies the pannaaks filter to the text.
 
-        Returns:
-            ModerationResult: HUMAN_REVIEW if offensive words are detected, otherwise ACCEPT.
+        Parameters
+        ----------
+        text : str
+            The text to be filtered.
+
+        Returns
+        -------
+        ModerationResult
+            HUMAN_REVIEW if offensive words are detected, otherwise ACCEPT.
         """
         if any(word in text.lower() for word in self.offensive_words):
             logger.info(f"Offensive content detected in comment: '{text}'")
@@ -565,8 +678,15 @@ class BoyFilter(BaseFilter):
         """
         Applies the boy filter to the text.
 
-        Returns:
-            ModerationResult: BAN if references to being a boy are detected, otherwise ACCEPT.
+        Parameters
+        ----------
+        text : str
+            The text to be filtered.
+
+        Returns
+        -------
+        ModerationResult
+            BAN if references to being a boy are detected, otherwise ACCEPT.
         """
         if any(word in text.lower() for word in self.offensive_words):
             logger.info(f"Reference to being a boy detected in comment: '{text}'")

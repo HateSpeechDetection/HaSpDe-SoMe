@@ -59,9 +59,18 @@ scheduler.start()
 def webhook():
     """
     Handle incoming webhook requests for verification and event processing.
-    Returns:
-    Response: JSON response based on the request type.
+
+    Parameters
+    ----------
+    request : flask.Request
+        The incoming HTTP request.
+
+    Returns
+    -------
+    Response
+        JSON response based on the request type.
     """
+    # Log the incoming request details for debugging
     data = "\n=== New Request ==="
     data += f"Request Method: {request.method}\n"
     data += f"Request Headers: {request.headers}\n"
@@ -81,10 +90,17 @@ def webhook():
 def handle_verification(request):
     """
     Verify the Instagram webhook subscription.
-    Parameters:
-    request (flask.Request): The incoming request containing verification parameters.
-    Returns:
-    Response: A plain text response with the challenge code on success or a JSON error message on failure.
+
+    Parameters
+    ----------
+    request : flask.Request
+        The incoming request containing verification parameters.
+
+    Returns
+    -------
+    Response
+        A plain text response with the challenge code on success
+        or a JSON error message on failure.
     """
     # Extract verification parameters from the request
     mode = request.args.get('hub.mode')
@@ -102,12 +118,16 @@ def handle_verification(request):
 def handle_webhook_event(request):
     """
     Handle incoming webhook events from Facebook and Instagram and process comments.
-    
-    Parameters:
-    request (flask.Request): The incoming request containing webhook data.
-    
-    Returns:
-    Response: A JSON response indicating the status of the operation.
+
+    Parameters
+    ----------
+    request : flask.Request
+        The incoming request containing webhook data.
+
+    Returns
+    -------
+    Response
+        A JSON response indicating the status of the operation.
     """
     # Parse JSON data from the request
     data = request.json
@@ -116,7 +136,7 @@ def handle_webhook_event(request):
 
     # Process Facebook Page events
     if data.get("object") == "page":
-        logger.info("The comment is facebook")
+        logger.info("The comment is Facebook")
 
         for entry in data.get("entry", []):
             print(entry)
@@ -132,7 +152,7 @@ def handle_webhook_event(request):
 
     # Process Instagram events
     elif data.get('object') == 'instagram':
-        logger.info("The comment is instagram")
+        logger.info("The comment is Instagram")
 
         for entry in data.get('entry', []):
             if 'changes' in entry and isinstance(entry['changes'], list):
@@ -145,12 +165,15 @@ def handle_webhook_event(request):
         logger.error("CRITICAL ERROR")
 
     return jsonify({'status': 'ok'}), 200
+
 def process_facebook_comment(comment_data):
     """
     Process a Facebook comment and store it in the database.
-    
-    Parameters:
-    comment_data (dict): The data of the Facebook comment from the webhook.
+
+    Parameters
+    ----------
+    comment_data : dict
+        The data of the Facebook comment from the webhook.
     """
     # Check if the comment_data contains the necessary fields
     if comment_data.get('item') == 'comment':
@@ -176,13 +199,14 @@ def process_facebook_comment(comment_data):
         else:
             logger.error("Comment ID is missing in the comment data.")
 
-
 def process_instagram_comment(comment_data):
     """
     Process an Instagram comment and store it in the database.
-    
-    Parameters:
-    comment_data (dict): The data of the Instagram comment from the webhook.
+
+    Parameters
+    ----------
+    comment_data : dict
+        The data of the Instagram comment from the webhook.
     """
     # Extract necessary data from the comment_data
     comment_id = comment_data.get('id')
@@ -209,14 +233,21 @@ def process_instagram_comment(comment_data):
 def comment_to_db(comment_id, comment_text, platform, user_id=None, user_name='Unknown User', media_id=None):
     """
     Store a comment in the database.
-    
-    Parameters:
-    comment_id (str): The unique identifier for the comment.
-    comment_text (str): The text content of the comment.
-    platform (str): The platform from which the comment originated.
-    user_id (str, optional): The ID of the user who made the comment.
-    user_name (str, optional): The name of the user who made the comment.
-    media_id (str, optional): The ID of the media associated with the comment (for Instagram).
+
+    Parameters
+    ----------
+    comment_id : str
+        The unique identifier for the comment.
+    comment_text : str
+        The text content of the comment.
+    platform : str
+        The platform from which the comment originated.
+    user_id : str, optional
+        The ID of the user who made the comment.
+    user_name : str, optional
+        The name of the user who made the comment.
+    media_id : str, optional
+        The ID of the media associated with the comment (for Instagram).
     """
     try:
         # Prepare the comment data for insertion
@@ -239,18 +270,41 @@ def comment_to_db(comment_id, comment_text, platform, user_id=None, user_name='U
         logger.error(f"Error inserting comment with ID {comment_id}: {e}")
 
 def approve_comment(comment_id):
-    """Approve the comment."""
-    #approve(comment_id)
+    """
+    Approve the comment.
+
+    Parameters
+    ----------
+    comment_id : str
+        The unique identifier for the comment.
+    """
+    approve(comment_id)
     logger.debug(f"Comment {comment_id} has been approved.")
 
 def send_for_human_review(comment_id):
-    """Queue the comment for human review and hide it in the meantime."""
-    comments_collection.update_one({'id': comment_id}, {'$set': {'status': 'PENDING_REVIEW', 'hidden': '1'}})
+    """
+    Queue the comment for human review and hide it in the meantime.
+
+    Parameters
+    ----------
+    comment_id : str
+        The unique identifier for the comment.
+    """
+    comments_collection.update_one({'id': comment_id}, {'$set': {'status': 'PENDING_REVIEW'}})
     logger.info(f"Comment {comment_id} is now queued for human review.")
     hide_comment(comment_id, log=False)  # Hide the comment while pending review
 
 def handle_action_based_on_mode(comment_id, fallback_action):
-    """Handle actions based on the config mode."""
+    """
+    Handle actions based on the config mode.
+
+    Parameters
+    ----------
+    comment_id : str
+        The unique identifier for the comment.
+    fallback_action : str
+        The fallback action to perform.
+    """
     if config.MODE == "full":
         action_2(comment_id)
     else:
@@ -259,10 +313,13 @@ def handle_action_based_on_mode(comment_id, fallback_action):
 def handle_comment(comment_data, owner_id=None):
     """
     Process an incoming comment for moderation.
-    
-    Parameters:
-    comment_data (dict): The data of the comment, including its ID and text.
-    owner_id (str, optional): The owner ID of the post where the comment was made.
+
+    Parameters
+    ----------
+    comment_data : dict
+        The data of the comment, including its ID and text.
+    owner_id : str, optional
+        The owner ID of the post where the comment was made.
     """
     # Extract comment ID and text based on the platform
     comment_id = comment_data.get('comment_id') or comment_data.get('id')
@@ -329,11 +386,15 @@ def get_owner_config(owner_id):
     """
     Retrieve the configuration for the owner based on their ID.
 
-    Parameters:
-    owner_id (str): The ID of the owner whose configuration is to be retrieved.
+    Parameters
+    ----------
+    owner_id : str
+        The ID of the owner whose configuration is to be retrieved.
 
-    Returns:
-    dict: The owner's configuration or None if not found.
+    Returns
+    -------
+    dict
+        The owner's configuration or None if not found.
     """
     # Assuming you have a collection for owner configurations in the database
     owner_config = db_2.owner_configs.find_one({'owner_id': owner_id})
@@ -343,12 +404,16 @@ def get_owner_config(owner_id):
 def get_instagram_owner_id(media_id):
     """
     Retrieve the owner ID for a given Instagram media or comment.
-    
-    Parameters:
-    media_id (str): The ID of the Instagram media or comment.
 
-    Returns:
-    str: The owner ID of the media or comment.
+    Parameters
+    ----------
+    media_id : str
+        The ID of the Instagram media or comment.
+
+    Returns
+    -------
+    str
+        The owner ID of the media or comment.
     """
     url = f"https://graph.facebook.com/{INSTAGRAM_API_VERSION}/{media_id}"
     params = {
@@ -370,6 +435,14 @@ def get_instagram_owner_id(media_id):
 
 
 def action_2(comment_id):
+    """
+    Remove the comment if it is deemed inappropriate.
+
+    Parameters
+    ----------
+    comment_id : str
+        The unique identifier for the comment.
+    """
     remove(comment_id)  # Remove the comment if it is deemed inappropriate
     logger.info(f"Comment {comment_id} has been removed.")
 
@@ -382,9 +455,12 @@ from flask import jsonify, request
 @app.route('/api/review', methods=['GET'])
 def review():
     """
-    API endpoint to retrieve a pending comment for review.
-    Returns:
-    Response: JSON with comment data or a message indicating no comments are pending.
+    Retrieve and render a pending comment for review.
+
+    Returns
+    -------
+    Response
+        Rendered HTML template for comment review or a message indicating no comments are pending.
     """
     # Retrieve the pending comments and count them using len()
     pending_comments = list(comments_collection.find({'status': 'PENDING_REVIEW'}))
@@ -416,9 +492,17 @@ def review():
 @app.route('/api/skip/<comment_id>', methods=["POST"])
 def skip(comment_id):
     """
-    API endpoint to skip a comment.
-    Returns:
-    Response: JSON confirming the skip action.
+    Skip the review of a comment.
+
+    Parameters
+    ----------
+    comment_id : str
+        The unique identifier for the comment.
+
+    Returns
+    -------
+    Response
+        Redirect to the review page.
     """
     # Update the comment status in MongoDB    
     result = comments_collection.update_one({'id': comment_id}, {'$set': {'status': 'SKIPPED'}})
@@ -432,11 +516,19 @@ def skip(comment_id):
 @app.route('/api/approve/<comment_id>', methods=['POST'])
 def approve(comment_id):
     """
-    API endpoint to approve a comment.
-    Returns:
-    Response: JSON confirming the approval action.
+    Approve a comment.
+
+    Parameters
+    ----------
+    comment_id : str
+        The unique identifier for the comment.
+
+    Returns
+    -------
+    Response
+        Redirect to the review page.
     """
-    # Find and approve the comment in MongoDB
+    # Update the comment status in MongoDB
     comment = comments_collection.find_one({'id': comment_id})
     
     if not comment:
@@ -455,37 +547,43 @@ def approve(comment_id):
 @app.route('/api/remove/<comment_id>', methods=['POST'])
 def remove(comment_id):
     """
-    API endpoint to remove a comment.
-    Returns:
-    Response: JSON confirming the removal action.
+    Remove a comment.
+
+    Parameters
+    ----------
+    comment_id : str
+        The unique identifier for the comment.
+
+    Returns
+    -------
+    Response
+        Redirect to the review page.
     """
-    # Find and remove the comment
-    comment = comments_collection.find_one({'id': comment_id})
+    comment = comments_collection.find_one({'id': comment_id})  # Find the comment from the database
     
-    if not comment:
-        return jsonify({'message': 'Comment not found', 'comment_id': comment_id}), 404
-
-    comments_collection.update_one({'id': comment_id}, {'$set': {'status': 'PENDING_REMOVE'}})
-
-    try:
-        moderation_model._log_comment(action_type=2, comment=comment["text"], label=1)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    else:
-        remove_comment(comment_id)
-        return jsonify({'message': 'Comment removed successfully', 'comment_id': comment_id})
+    comments_collection.update_many({'id': comment_id}, {'$set': {'status': 'PENDING_REMOVE'}})  # Let database know, that we will soon remove the comment from the social media platform
+    
+    moderation_model._log_comment(action_type=2, comment=comment["text"], label=1)  # On our AI model, add to training data
+    
+    remove_comment(comment_id)
+    
+    return redirect(url_for('review'))
 
 def evaluate_comment(comment_text):
     """
     Evaluate the given comment for profanity using the profane_detector model 
     designed for HaSpDe. Note: The profanity detection feature has been deprecated 
     and will no longer be supported in future updates.
-    
-    Parameters:
-    comment_text (str): The text of the comment to evaluate.
-    
-    Returns:
-    str: "Positive" if no profanity is detected, "Negative" otherwise.
+
+    Parameters
+    ----------
+    comment_text : str
+        The text of the comment to evaluate.
+
+    Returns
+    -------
+    str
+        "Positive" if no profanity is detected, "Negative" otherwise.
     """
     logger.debug(f"Evaluating comment: {comment_text}")
 
@@ -500,6 +598,19 @@ def evaluate_comment(comment_text):
 
 
 def init_comment(comment_id):
+    """
+    Initialize the comment details.
+
+    Parameters
+    ----------
+    comment_id : str
+        The unique identifier for the comment.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the comment, media ID, and platform.
+    """
     # Fetch the comment details to get the media ID and platform
     comment = comments_collection.find_one({'id': comment_id})
     if not comment:
@@ -519,8 +630,11 @@ def init_comment(comment_id):
 def remove_comment(comment_id):
     """
     Remove a comment from Facebook or Instagram using the Graph API.
-    Parameters:
-    comment_id (str): The unique identifier for the comment to be removed.
+
+    Parameters
+    ----------
+    comment_id : str
+        The unique identifier for the comment to be removed.
     """
     comment, media_id, platform = init_comment(comment_id)
 
@@ -545,6 +659,21 @@ def remove_comment(comment_id):
         logger.error(f"An error occurred while trying to remove comment with ID {comment_id}: {e}")
 
 def token_(media_id, platform):
+    """
+    Generate the authorization token for the given platform.
+
+    Parameters
+    ----------
+    media_id : str
+        The ID of the media associated with the comment.
+    platform : str
+        The platform from which the comment originated.
+
+    Returns
+    -------
+    dict
+        The headers containing the authorization token.
+    """
     if platform == "instagram":
         access_token = INSTAGRAM_ACCESS_TOKEN
 
@@ -574,10 +703,14 @@ def hide_comment(comment_id, log=True, unhide=False):
     """
     Hide or unhide a comment on Instagram using the Instagram Graph API.
 
-    :param comment_id: The ID of the comment to hide or unhide.
-    :param log: Whether to log the operation status (default is True).
-    :param unhide: If True, the comment will be unhidden; if False, it will be hidden (default is False).
-    :return: Response of the API request.
+    Parameters
+    ----------
+    comment_id : str
+        The unique identifier for the comment.
+    log : bool, optional
+        Whether to log the action in the database (default is True).
+    unhide : bool, optional
+        Whether to unhide the comment (default is False).
     """
     # Initialize the comment, media_id, and platform
     comment, media_id, platform = init_comment(comment_id)
@@ -616,10 +749,31 @@ def hide_comment(comment_id, log=True, unhide=False):
                        f"Status code: {response.status_code}, Response: {response.text}")
 
 def method_not_allowed():
+    """
+    Handle method not allowed error.
+
+    Returns
+    -------
+    Response
+        JSON response indicating the error.
+    """
     logger.warning("Method not allowed!")
     return jsonify({'error': 'Method not allowed'}), 405
 
 def get_facebook_token(owner_id):
+    """
+    Retrieve the Facebook token for the given owner ID.
+
+    Parameters
+    ----------
+    owner_id : str
+        The ID of the owner.
+
+    Returns
+    -------
+    str
+        The Facebook token.
+    """
     # Fetch user info to find the corresponding page access token
     user = db_2.users.find_one({'managed_pages.page_id': owner_id})
     if user:
@@ -634,7 +788,21 @@ def get_facebook_token(owner_id):
         logger.critical(f"No user found for owner ID {owner_id}.")
         return
 
-def facebook_remove_handler(media_id): # For Facebook, derive the owner ID
+def facebook_remove_handler(media_id):
+    """
+    Generate the authorization headers for Facebook.
+
+    Parameters
+    ----------
+    media_id : str
+        The ID of the media associated with the comment.
+
+    Returns
+    -------
+    dict
+        The headers containing the authorization token.
+    """
+    # For Facebook, derive the owner ID
     owner_id = media_id.split('_')[0]  # Get the part before the underscore
     page_access_token = get_facebook_token(owner_id)
 

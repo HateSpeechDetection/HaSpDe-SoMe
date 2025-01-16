@@ -56,7 +56,23 @@ def performance_tracker(func):
 
 @performance_tracker
 def get_most_probable_class_and_percent(model, X):
-    """Get the most probable class and its percentage from the model."""
+    """
+    Retrieve the most probable class and its corresponding confidence percentage from the model.
+
+    Parameters
+    ----------
+    model : sklearn.base.BaseEstimator
+        The trained machine learning model used for prediction.
+    X : array-like
+        The input data for which predictions are to be made.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - most_probable_class_index (int): The index of the most probable class.
+        - most_probable_percent (float): The confidence percentage of the prediction.
+    """
     probabilities = model.predict_proba(X)
     most_probable_class_index = np.argmax(probabilities, axis=1)[0]  # First element
     most_probable_percent = probabilities[0, most_probable_class_index] * 100  # First row
@@ -93,13 +109,23 @@ class ModerationModel:
     def load_model(self, attempt=0, max_attempts=2):
         """
         Load the machine learning model with retry logic.
-        
-        Args:
-            attempt (int): The current attempt number (default is 0).
-            max_attempts (int): Maximum number of retry attempts (default is 2).
-        
-        Returns:
-            model: The loaded machine learning model.
+
+        Parameters
+        ----------
+        attempt : int, optional
+            The current attempt number (default is 0).
+        max_attempts : int, optional
+            The maximum number of retry attempts allowed (default is 2).
+
+        Returns
+        -------
+        sklearn.base.BaseEstimator
+            The loaded machine learning model.
+
+        Raises
+        ------
+        SystemExit
+            If the model fails to load after the maximum number of attempts.
         """
         # Check for model updates
         self.updater.update_model()
@@ -133,14 +159,24 @@ class ModerationModel:
     @performance_tracker
     def load_vectorizer(self, attempt=0, max_attempts=2):
         """
-        Load the vectorizer with retry logic and error handling.
+        Load the TF-IDF vectorizer with retry logic and error handling.
 
-        Args:
-            attempt (int): The current attempt number (default is 0).
-            max_attempts (int): Maximum number of retry attempts (default is 2).
+        Parameters
+        ----------
+        attempt : int, optional
+            The current attempt number (default is 0).
+        max_attempts : int, optional
+            The maximum number of retry attempts allowed (default is 2).
 
-        Returns:
-            vectorizer: The loaded vectorizer.
+        Returns
+        -------
+        sklearn.feature_extraction.text.TfidfVectorizer
+            The loaded TF-IDF vectorizer.
+
+        Raises
+        ------
+        SystemExit
+            If the vectorizer fails to load after the maximum number of attempts.
         """
         try:
             # Attempt to load the vectorizer
@@ -177,6 +213,23 @@ class ModerationModel:
         return 0 if label in [0] else 1
     @performance_tracker
     def moderate_comment(self, comment, config={}, interactive=False):
+        """
+        Moderate a comment based on predefined filters and model predictions.
+
+        Parameters
+        ----------
+        comment : str
+            The comment to be moderated.
+        config : dict, optional
+            Configuration options for moderation, including custom filters (default is empty dict).
+        interactive : bool, optional
+            Flag to enable interactive mode for user feedback (default is False).
+
+        Returns
+        -------
+        ModerationResult
+            The final moderation result after applying filters and model predictions.
+        """
         highest_result = ModerationResult.ACCEPT  # Start with the lowest moderation level
         
         filt = []
@@ -235,6 +288,25 @@ class ModerationModel:
         return highest_result
 
     def feedback(self, interactive, highest_result, percent, model_result):
+        """
+        Handle user feedback in interactive mode to adjust moderation results.
+
+        Parameters
+        ----------
+        interactive : bool
+            Indicates if interactive mode is enabled.
+        highest_result : ModerationResult
+            The current highest priority moderation result.
+        percent : float
+            The confidence percentage of the model's prediction.
+        model_result : ModerationResult
+            The initial moderation result from the model.
+
+        Returns
+        -------
+        ModerationResult
+            The updated moderation result based on user feedback.
+        """
         if interactive:
             user_feedback = input(f"""🤖 Model moderation result: {model_result} with certainty {percent:.2f}%.\nWas this correct? (Y/N): """).strip().upper()
                 
@@ -265,6 +337,18 @@ class ModerationModel:
 
     @performance_tracker
     def _log_comment(self, label, action_type, comment):
+        """
+        Log the moderated comment with its associated label and action type.
+
+        Parameters
+        ----------
+        label : int
+            The numerical label representing the moderation decision.
+        action_type : int
+            The type of action to be taken based on the label.
+        comment : str
+            The content of the moderated comment.
+        """
         if self.learns:
             api_url = "https://updates.haspde.luova.club/comments"
             action_mapping = {
@@ -296,6 +380,19 @@ class ModerationModel:
             logger.debug("Learning disabled by config. Not adding to training data.")
 
     def ask_for_human_review(self, comment):
+        """
+        Prompt for human review of a comment when moderation confidence is low.
+
+        Parameters
+        ----------
+        comment : str
+            The comment requiring human review.
+
+        Returns
+        -------
+        int
+            User input indicating approval (0) or flagging (1) of the comment.
+        """
         while True:
             try:
                 transformed_comment = self.vectorizer.transform([comment])
